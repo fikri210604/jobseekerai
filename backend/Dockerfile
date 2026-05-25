@@ -47,8 +47,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy source code backend (kecuali yang di .dockerignore)
-COPY . .
+# Copy source code backend ke dalam folder /app/backend agar absolute import bekerja
+COPY . /app/backend
 
 # Port yang di-expose (Cloud Run default: 8080)
 EXPOSE 8080
@@ -57,6 +57,7 @@ EXPOSE 8080
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
@@ -64,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Start server
 # Gunakan $PORT agar kompatibel dengan Cloud Run (inject PORT=8080 otomatis)
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1"]
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1"]
