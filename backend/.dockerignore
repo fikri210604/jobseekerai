@@ -1,0 +1,52 @@
+# .dockerignore — file yang TIDAK di-copy ke Docker image
+
+# Virtual environment (sudah di-install di image)
+venv/
+.venv/
+env/
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Jupyter notebooks (tidak perlu di production)
+*.ipynb
+.ipynb_checkpoints/
+
+# Data mentah (terlalu besar, gunakan Cloud Storage)
+data/raw/
+data/scrap/
+data/fetch/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment secrets (JANGAN pernah di-copy ke image)
+.env
+*.env
+
+# Logs
+*.log
+logs/
+
+# Test files
+tests/
+pytest.ini
+.pytest_cache/
+
+# Docs
+*.md
+README*
+
+# Scratch
+scratch/

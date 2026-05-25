@@ -1,0 +1,289 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   SkillBridge AI — Design System CSS Variables
+   Modern Minimalist SaaS · Canvas #02040a · Indigo + Emerald
+   ============================================================ */
+
+:root {
+  /* --- Canvas & Surfaces --- */
+  --sb-canvas:        #02040a;   /* Deep navy black — page background */
+  --sb-surface-1:     #0d1117;   /* Charcoal base — cards & panels */
+  --sb-surface-2:     #161b22;   /* Lifted dark slate — hover/active */
+  --sb-hairline:      #1f2430;   /* Subtle 1px grid border */
+  --sb-hairline-strong: #30363d; /* Input active border */
+
+  /* --- Text Colors --- */
+  --sb-ink:           #f3f4f6;   /* Core text — light gray */
+  --sb-ink-muted:     #9ca3af;   /* Secondary metadata text */
+  --sb-ink-faint:     #6b7280;   /* Tertiary / disabled */
+
+  /* --- Brand Colors --- */
+  --sb-indigo:        #5e6ad2;   /* Primary — nav, buttons, controls */
+  --sb-indigo-dim:    rgba(94, 106, 210, 0.12);
+  --sb-indigo-glow:   rgba(94, 106, 210, 0.25);
+
+  /* --- Semantic Colors --- */
+  --sb-emerald:       #10b981;   /* Success — confidence score, match high */
+  --sb-emerald-dim:   rgba(16, 185, 129, 0.12);
+  --sb-amber:         #f59e0b;   /* Warning — moderate match, partial gap */
+  --sb-amber-dim:     rgba(245, 158, 11, 0.12);
+  --sb-red:           #ef4444;   /* Error — missing SKKNI codes */
+  --sb-red-dim:       rgba(239, 68, 68, 0.12);
+  --sb-sky:           #38bdf8;   /* Cosine similarity token */
+  --sb-sky-dim:       rgba(56, 189, 248, 0.12);
+
+  /* --- Radius --- */
+  --sb-radius-sm:     6px;
+  --sb-radius-md:     8px;
+  --sb-radius-lg:     12px;
+  --sb-radius-xl:     16px;
+
+  /* --- Shadcn variable overrides → always dark mode --- */
+  --background:        var(--sb-canvas);
+  --foreground:        var(--sb-ink);
+  --card:              var(--sb-surface-1);
+  --card-foreground:   var(--sb-ink);
+  --popover:           var(--sb-surface-2);
+  --popover-foreground: var(--sb-ink);
+  --primary:           var(--sb-indigo);
+  --primary-foreground: #fff;
+  --secondary:         var(--sb-surface-2);
+  --secondary-foreground: var(--sb-ink);
+  --muted:             var(--sb-surface-2);
+  --muted-foreground:  var(--sb-ink-muted);
+  --accent:            var(--sb-surface-2);
+  --accent-foreground: var(--sb-ink);
+  --destructive:       var(--sb-red);
+  --border:            var(--sb-hairline);
+  --input:             var(--sb-hairline-strong);
+  --ring:              var(--sb-indigo);
+  --radius:            0.75rem;
+
+  /* Shadcn chart tokens */
+  --chart-1: var(--sb-indigo);
+  --chart-2: var(--sb-emerald);
+  --chart-3: var(--sb-amber);
+  --chart-4: var(--sb-sky);
+  --chart-5: var(--sb-red);
+
+  /* Sidebar */
+  --sidebar:                  var(--sb-surface-1);
+  --sidebar-foreground:       var(--sb-ink);
+  --sidebar-primary:          var(--sb-indigo);
+  --sidebar-primary-foreground: #fff;
+  --sidebar-accent:           var(--sb-surface-2);
+  --sidebar-accent-foreground: var(--sb-ink);
+  --sidebar-border:           var(--sb-hairline);
+  --sidebar-ring:             var(--sb-indigo);
+  --map-region:        oklch(44.3% 0.11 240.79);
+  --map-region-hover:        oklch(50% 0.134 242.748);
+  --map-region-selected:        oklch(39.1% 0.09 240.875);
+  --map-region-disabled:        oklch(55.4% 0.046 257.417);
+  --map-region-stroke:        oklch(28.2% 0.091 267.935);
+  --map-region-stroke-hover:        oklch(28.2% 0.091 267.935);
+  --map-region-focus-ring:        oklch(70.7% 0.165 254.624);
+  --map-label:        oklch(100% 0 0);
+  --map-label-hover:        oklch(100% 0 0);
+  --map-label-selected:        oklch(100% 0 0);
+}
+
+/* Tailwind inline theme extensions */
+@theme inline {
+  --color-background:   var(--background);
+  --color-foreground:   var(--foreground);
+  --font-sans:          var(--font-sans);
+  --font-mono:          var(--font-geist-mono);
+  --font-heading:       var(--font-heading);
+  --color-card:         var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover:      var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary:      var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary:    var(--secondary);
+  --color-muted:        var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent:       var(--accent);
+  --color-border:       var(--border);
+  --color-input:        var(--input);
+  --color-ring:         var(--ring);
+  --color-destructive:  var(--destructive);
+  --radius-sm:          calc(var(--radius) * 0.6);
+  --radius-md:          calc(var(--radius) * 0.8);
+  --radius-lg:          var(--radius);
+  --radius-xl:          calc(var(--radius) * 1.4);
+  --color-map-label-selected:        var(--map-label-selected);
+  --color-map-label-hover:        var(--map-label-hover);
+  --color-map-label:        var(--map-label);
+  --color-map-region-focus-ring:        var(--map-region-focus-ring);
+  --color-map-region-stroke-hover:        var(--map-region-stroke-hover);
+  --color-map-region-stroke:        var(--map-region-stroke);
+  --color-map-region-disabled:        var(--map-region-disabled);
+  --color-map-region-selected:        var(--map-region-selected);
+  --color-map-region-hover:        var(--map-region-hover);
+  --color-map-region:        var(--map-region);
+}
+
+/* ============================================================
+   Base Layer
+   ============================================================ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--sb-canvas);
+    color: var(--sb-ink);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* Numeric / metric tokens → always Geist Mono */
+  .font-metric {
+    font-family: var(--font-geist-mono), "JetBrains Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* Headings use negative tracking */
+  h1, h2, h3 {
+    letter-spacing: -0.04em;
+    font-weight: 600;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--sb-canvas);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--sb-hairline-strong);
+    border-radius: 3px;
+  }
+}
+
+/* ============================================================
+   Utility Classes (SkillBridge tokens)
+   ============================================================ */
+
+@layer utilities {
+  /* Surfaces */
+  .sb-canvas   { background-color: var(--sb-canvas); }
+  .sb-surface-1 { background-color: var(--sb-surface-1); }
+  .sb-surface-2 { background-color: var(--sb-surface-2); }
+
+  /* Borders */
+  .sb-border   { border: 1px solid var(--sb-hairline); }
+  .sb-border-strong { border: 1px solid var(--sb-hairline-strong); }
+
+  /* Card pattern */
+  .sb-card {
+    background-color: var(--sb-surface-1);
+    border: 1px solid var(--sb-hairline);
+    border-radius: var(--sb-radius-lg);
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .sb-card:hover {
+    background-color: var(--sb-surface-2);
+    border-color: var(--sb-hairline-strong);
+  }
+
+  /* Text */
+  .sb-ink       { color: var(--sb-ink); }
+  .sb-ink-muted { color: var(--sb-ink-muted); }
+  .sb-ink-faint { color: var(--sb-ink-faint); }
+
+  /* Brand */
+  .sb-indigo    { color: var(--sb-indigo); }
+  .sb-emerald   { color: var(--sb-emerald); }
+  .sb-amber     { color: var(--sb-amber); }
+  .sb-sky       { color: var(--sb-sky); }
+  .sb-red       { color: var(--sb-red); }
+
+  /* Metric token — emerald mono */
+  .metric-emerald {
+    font-family: var(--font-geist-mono), monospace;
+    color: var(--sb-emerald);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* Metric token — sky mono (cosine) */
+  .metric-sky {
+    font-family: var(--font-geist-mono), monospace;
+    color: var(--sb-sky);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* Glow variants */
+  .glow-indigo { box-shadow: 0 0 0 1px var(--sb-indigo-glow), 0 0 20px var(--sb-indigo-dim); }
+  .glow-emerald { box-shadow: 0 0 0 1px rgba(16,185,129,0.3), 0 0 20px var(--sb-emerald-dim); }
+}
+
+/* ============================================================
+   Animation Keyframes
+   ============================================================ */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes scan-line {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.4s ease forwards;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Terminal cursor blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+.dark {
+  --map-region:        oklch(44.3% 0.11 240.79);
+  --map-region-hover:        oklch(50% 0.134 242.748);
+  --map-region-selected:        oklch(39.1% 0.09 240.875);
+  --map-region-disabled:        oklch(55.4% 0.046 257.417);
+  --map-region-stroke:        oklch(28.2% 0.091 267.935);
+  --map-region-stroke-hover:        oklch(28.2% 0.091 267.935);
+  --map-region-focus-ring:        oklch(70.7% 0.165 254.624);
+  --map-label:        oklch(100% 0 0);
+  --map-label-hover:        oklch(100% 0 0);
+  --map-label-selected:        oklch(100% 0 0);
+}
