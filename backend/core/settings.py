@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     """
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    # ── Security & CORS ───────────────────────────────────────────────────────
+    # Masukkan origin yang diizinkan, pisahkan dengan koma (contoh: "http://localhost:3000,https://domain.com")
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000"
+
     # ── Google Cloud (GCP) ────────────────────────────────────────────────────
     gcp_project_id: str = "your-gcp-project-id"
     gcp_location: str = "us-central1"

@@ -27,11 +27,13 @@ __pycache__/
 htmlcov/
 
 # Models & Data (Ignore large files & raw data)
-backend/data/*
-!backend/data/.gitkeep
-backend/models/*.pkl
-backend/models/*.bin
-backend/models/*.h5
+backend/data/raw/
+backend/data/scrap/
+backend/data/fetch/
+# Biarkan data yang sudah diproses dan model tetap ter-commit (ukurannya kecil, total ~25MB)
+# backend/models/*.pkl
+# backend/models/*.bin
+# backend/models/*.h5
 
 # ==============================
 # Frontend (Node / Next.js)

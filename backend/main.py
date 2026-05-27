@@ -25,6 +25,7 @@ from backend.routes.web import router as web_router                     # Intern
 # ── Services ──────────────────────────────────────────────────────────────────
 from backend.services.matcher_service import matcher
 from backend.services.vector_store import vector_store
+from backend.core.settings import settings
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -78,11 +79,7 @@ app = FastAPI(
 # ── CORS — Izinkan request dari frontend Next.js ───────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",    # Next.js dev server
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",    # Swagger UI self-request
-    ],
+    allow_origins=[origin.strip() for origin in settings.cors_origins.split(",")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
