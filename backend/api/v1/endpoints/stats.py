@@ -9,7 +9,7 @@ def get_statistic_service() -> StatisticService:
     return statistic_service
 
 @router.get(
-    "/",
+    "",
     response_model=StatsResponse,
     summary="Unified Market Insights & Statistics",
     description="Mengembalikan semua statistik, insight pasar, dan distribusi lowongan dalam satu endpoint."
