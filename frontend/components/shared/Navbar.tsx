@@ -29,7 +29,6 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/predict", label: "Analyze", icon: BrainCircuit },
-  { href: "/results", label: "Results", icon: LayoutDashboard },
   { href: "/search", label: "Search", icon: Search },
 ] as const;
 

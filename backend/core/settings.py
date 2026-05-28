@@ -5,6 +5,7 @@ Validasi tipe otomatis saat startup.
 """
 
 from typing import Dict, Tuple
+# pyright: ignore [missing-import]
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ── Readiness Label Thresholds ────────────────────────────────────────────────

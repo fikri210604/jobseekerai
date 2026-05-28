@@ -1,288 +1,292 @@
-# 🤖 SkillBridge AI — Intelligent Career Advisor & Job Matching Platform
+# SkillBridge AI — Intelligent Career Advisor & Job Matching Platform
 
-> **Deskripsi:** Sistem AI berbasis multi-layer scoring (Semantic Similarity + ML Prediction) yang menganalisis profil pengguna, mencocokkan dengan lowongan kerja, mengidentifikasi skill gap, dan memprediksi trajektori karir — dikhususkan untuk pasar kerja Indonesia.
-> *(Pengolahan CV dan Rule-Based Expert System dipindahkan ke pengembangan selanjutnya)*
-> 🏆 **Mata Kuliah:** Proyek Spesial Data Science — Semester 6
+**Deskripsi:** Sistem AI berbasis multi-layer scoring (Semantic Similarity + ML Prediction) yang menganalisis profil pengguna, mencocokkan dengan lowongan kerja, mengidentifikasi skill gap, dan memprediksi trajektori karir — dikhususkan untuk pasar kerja Indonesia.
+*(Pengolahan CV dan Rule-Based Expert System dipindahkan ke pengembangan selanjutnya)*
+**Mata Kuliah:** Proyek Spesial Data Science — Semester 6
 
-> ⚠️ **Catatan Penting untuk Agent:** README ini adalah **sumber kebenaran arsitektur**. Implementasi aktual mungkin berbeda dari roadmap V2.0 (GCP). Selalu baca bagian "Status Implementasi" sebelum membuat perubahan.
-
----
-
-## 📐 Arsitektur Tingkat Tinggi (V2.0 — GCP Native)
-
-```
-┌──────────────┐     ┌──────────────────────────────┐     ┌──────────────┐
-│   Frontend   │────▶│        FastAPI Backend        │────▶│   Supabase   │
-│  (Next.js)   │◀────│   (orchestrator + API layer)  │◀────│  (Database)  │
-│  Port: 3000  │     │         Port: 8000            │     └──────────────┘
-└──────────────┘     └──────────┬───────────────────┘
-                                │
-                     ┌──────────▼───────────────────┐
-                     │       Backend Pipeline        │
-                     │  (AI logic, rules, prompts,   │
-                     │   ML models, services, NER)   │
-                     └──────────────────────────────┘
-                                │
-                     ┌──────────▼───────────────────┐
-                     │     External Services (Aktual) │
-                     │  - Ollama/Gemma 2B (LLM)      │
-                     │  - SBERT all-MiniLM-L6-v2     │
-                     │  - FAISS (Vector Index lokal) │
-                     │  - SerpApi (Job Data Source)  │
-                     │  - Supabase (PostgreSQL)      │
-                     │  - Google Cloud (Deployment)  │
-                     └──────────────────────────────┘
-```
+> **Catatan Penting untuk Agent:** README ini adalah **sumber kebenaran arsitektur**. Selalu baca bagian "Status Implementasi" sebelum membuat perubahan.
 
 ---
 
-## 📁 Struktur Proyek
+## Arsitektur Tingkat Tinggi
+
+```
+┌──────────────┐     ┌─────────────────────────────────────┐     ┌──────────────┐
+│   Frontend   │────▶│       FastAPI Backend (Clean Arch)  │────▶│   Supabase   │
+│  (Next.js 16)│◀────│  api/v1/endpoints → services       │◀────│  (PostgreSQL)│
+│  Port: 3000  │     │  Port: 8000                         │     └──────────────┘
+└──────────────┘     └──────────┬──────────────────────────┘
+                                 │
+                      ┌──────────▼──────────────────────────┐
+                      │       Backend AI Pipeline            │
+                      │  (services, models, prompts, ML)     │
+                      │                                     │
+                      │  ┌─────────────────────────────┐    │
+                      │  │ matcher_service.py           │    │
+                      │  │ (Heuristic + ML fusion)     │    │
+                      │  └─────────────────────────────┘    │
+                      │  ┌─────────────────────────────┐    │
+                      │  │ vector_store.py              │    │
+                      │  │ (FAISS + SBERT search)      │    │
+                      │  └─────────────────────────────┘    │
+                      │  ┌─────────────────────────────┐    │
+                      │  │ etl_pipeline.py              │    │
+                      │  │ (Data extraction & cleanup) │    │
+                      │  └─────────────────────────────┘    │
+                      └────────────────────────────────────┘
+                                 │
+                      ┌──────────▼──────────────────────────┐
+                      │     External Services                │
+                      │  - Ollama/Gemma 2B (LLM lokal)       │
+                      │  - SBERT paraphrase-multilingual     │
+                      │  - FAISS (Vector Index lokal)        │
+                      │  - SerpApi (Job Data Source)         │
+                      │  - Google Cloud (target deployment)  │
+                      └─────────────────────────────────────┘
+```
+
+---
+
+## Struktur Proyek
 
 ```
 project-akhir/
-├── README.md                  ← (File ini) Dokumentasi utama untuk developer
+├── README.md                  ← (File ini) Dokumentasi utama
 ├── AGENTS.md                  ← Panduan untuk AI coding agents
-├── Dockerfile                 ← Dockerfile root (belum diisi)
-├── docker-compose.yml         ← Docker Compose root (belum diisi)
+├── Dockerfile                 ← Root Dockerfile (belum diisi)
+├── docker-compose.yml         ← Root Compose (belum diisi)
 │
-├── backend/                   ← ★ CORE AI PIPELINE — seluruh logika kecerdasan
+├── backend/                   ← CORE AI PIPELINE — seluruh logika kecerdasan
 │   ├── __init__.py
 │   ├── .env                   ← Environment variables (JANGAN commit)
-│   ├── .gitignore
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── README.md              ← Dokumentasi khusus backend pipeline
+│   ├── main.py                ← Entry point FastAPI server (uvicorn)
 │   │
-│   ├── config/                ← Konfigurasi global & client initialization
-│   │   ├── settings.py        ← Env vars, model config, bobot scoring, threshold
-│   │   └── azure_client.py    ← Factory functions untuk Azure AI services
+│   ├── api/                   ← FastAPI Clean Architecture
+│   │   ├── dependencies.py    ← DI: get_matcher(), get_vector_store()
+│   │   └── v1/
+│   │       ├── api_router.py  ← Router aggregator
+│   │       ├── endpoints/     ← Controllers per domain
+│   │       │   ├── match.py   ← POST /match, GET /match/categories
+│   │       │   ├── search.py  ← GET /search, /distribution, /stats, /jobs_category
+│   │       │   ├── jobs.py    ← GET /jobs, GET /jobs/{id}
+│   │       │   ├── skills.py  ← POST /skills/gap, GET /skills/trending
+│   │       │   └── cv.py      ← (placeholder, kosong)
+│   │       └── schemas/       ← Pydantic v2 schemas per domain
+│   │           ├── match.py   ← MatchRequest, MatchResponse, MatchResult, dll
+│   │           ├── search.py  ← SearchResponse, StatsResponse, Distribution
+│   │           ├── jobs.py    ← JobItem, JobListResponse, JobDetailResponse
+│   │           └── skills.py  ← SkillGapRequest/Response, TrendingResponse
 │   │
-│   ├── prompts/               ← Prompt engineering templates (Claude / Gemini)
-│   │   ├── system_prompt.py   ← System prompt utama untuk semua AI call
+│   ├── core/
+│   │   └── settings.py        ← Pydantic BaseSettings (env vars, weights, config)
+│   │
+│   ├── prompts/               ← LLM prompt templates (untuk Ollama/Gemma 2B)
+│   │   ├── system_prompt.py   ← System prompt utama
 │   │   ├── cv_parser.py       ← Prompt parsing CV (raw text → structured JSON)
+│   │   ├── etl_pipeline.py    ← Prompt ETL extraction (job → skills)
 │   │   ├── job_matcher.py     ← Prompt ranking & matching jobs
 │   │   ├── skill_gap.py       ← Prompt analisis gap skill per kategori
 │   │   └── career_predict.py  ← Prompt prediksi karir & roadmap upskilling
 │   │
-│   ├── rules/                 ← (POSTPONED) Rule-based expert system
-│   │   ├── expert_system.py   ← Hard rules, soft rules, bonus rules (ditunda)
-│   │   ├── skkni_weights.py   ← Tabel bobot skill berbasis SKKNI Kemnaker (ditunda)
-│   │   └── inference_engine.py← Forward chaining (ditunda)
+│   ├── routes/                ← Internal & Legacy routes (deprecated)
+│   │   ├── predictor_router.py← POST /recommend (legacy, deprecated)
+│   │   ├── retrieval_router.py← GET /retrieval/search (legacy, deprecated)
+│   │   └── web.py             ← Internal tools
 │   │
-│   ├── services/              ← Service layer (business logic orchestrators)
-│   │   ├── job_matcher.py     ← 2-layer fusion: SBERT + ML Prediction
-│   │   ├── skill_gap.py       ← Analisis gap: kalkulasi + LLM enrichment
-│   │   └── career_predictor.py← Prediksi karir: RF + trend + LLM narrative
+│   ├── services/              ← Business logic utama
+│   │   ├── matcher_service.py ← Hybrid recommendation (Heuristic + ML fusion)
+│   │   ├── vector_store.py    ← FAISS + SBERT Semantic Search
+│   │   ├── etl_pipeline.py    ← Ekstraksi & normalisasi data pekerjaan
+│   │   ├── data_indexing.py   ← Build & load index untuk pencarian
+│   │   ├── evaluation_cells.py← ML evaluation helpers
+│   │   ├── scraper_v2.py      ← SerpApi scraper
+│   │   ├── etl_learning.ipynb ← Notebook utama ETL pipeline (Ollama)
+│   │   ├── data_indexing.ipynb← Notebook ML training (RF vs LogReg vs XGB)
+│   │   └── retrieval_pipeline.ipynb ← Notebook Semantic Search (FAISS + SBERT)
 │   │
-│   ├── models/                ← Data models & ML utilities
-│   │   ├── schemas.py         ← Pydantic schemas (input/output semua pipeline)
-│   │   └── embedder.py        ← SBERT singleton wrapper (encode, similarity)
+│   ├── models/                ← Model ML / Embedder
+│   │   ├── embedder.py        ← SBERT singleton wrapper
+│   │   ├── logistic_regression.pkl ← Trained LogReg model
+│   │   ├── random_forest.pkl       ← Trained RF model
+│   │   └── xgboost.pkl             ← Trained XGBoost model
 │   │
-│   ├── utils/                 ← Shared utilities
-│   │   ├── logger.py          ← Pipeline monitoring, timing, error logging
-│   │   └── skill_normalizer.py← Normalisasi skill aliases ("js" → "JavaScript")
+│   ├── utils/                 ← Helper functions & logging
+│   │   ├── logger.py          ← PipelineTrace + @timed_step decorator
+│   │   └── skill_normalizer.py← 60+ alias mapping ("js" → "JavaScript")
 │   │
-│   ├── data/                  ← Data pipeline artifacts
+│   ├── data/                  ← Dataset & artifacts
 │   │   ├── raw/               ← Data mentah dari SerpApi (google_jobs_results.json ~18MB)
-│   │   ├── cleaned/           ← Hasil ekstraksi AI (cleaned_jobs.json — incremental)
-│   │   ├── refined/           ← Hasil post-processing (refined_jobs.json — siap FAISS)
-│   │   ├── vector/            ← FAISS index & job mapping JSON
+│   │   ├── cleaned/           ← Hasil ekstraksi AI (cleaned_jobs.json)
+│   │   ├── refined/           ← refined_jobs.json (siap FAISS)
+│   │   ├── vector/            ← FAISS index + job_mapping.json (756 jobs terindex)
+│   │   ├── retrieval/         ← Data retrieval pipeline
+│   │   ├── scrap/             ← Raw scrap data
 │   │   └── fetch/             ← Skrip scraping (serapi_fetch.py)
-│   └── services/
-│       ├── etl_learning.ipynb ← ★ Notebook utama ETL pipeline (Ollama)
-│       └── retrieval_pipeline.ipynb ← ★ Notebook Semantic Search (FAISS + SBERT)
+│   │
+│   ├── requirements.txt       ← Dependencies utama
+│   ├── requirements_ml.txt    ← Dependencies ML tambahan
+│   ├── Dockerfile
+│   └── docker-compose.yml
 │
-└── frontend/                  ← Next.js 16 (App Router + Tailwind + Sera UI)
+└── frontend/                  ← Next.js 16 (App Router + Tailwind + Shadcn UI)
     ├── AGENTS.md              ← Instruksi agent untuk frontend
-    ├── app/                   ← Pages & layouts
-    ├── components/            ← UI components (ui/, shared/, features/)
-    ├── lib/                   ← Utils, Zustand store, API clients
-    └── types/                 ← TypeScript interfaces (mirror Pydantic schemas)
+    ├── app/                   ← Pages & layouts (App Router)
+    │   ├── page.tsx           ← Landing page (Hero, Search, Categories, Map)
+    │   ├── layout.tsx
+    │   ├── jobs/[id]/         ← Job detail & SKKNI Radar Chart
+    │   ├── predict/           ← Profile form + algorithm config
+    │   ├── results/           ← Prediction results dashboard
+    │   └── search/            ← Semantic search engine
+    ├── components/
+    │   ├── ui/                ← Shadcn UI primitives (button, card, badge, dll)
+    │   ├── shared/            ← Navbar, layout components
+    │   └── features/          ← job-detail/, predict/, results/, search/
+    ├── lib/
+    │   ├── api.ts             ← Re-export all API modules
+    │   ├── api/               ← Axios clients (cv, jobs, matching, prediction, skills)
+    │   ├── store.ts           ← Zustand stores (user, results, search, skillGap, career)
+    │   ├── utils.ts           ← cn() utility
+    │   └── mock-data.ts       ← Mock data for development
+    ├── types/
+    │   └── index.ts           ← TypeScript interfaces (mirror Pydantic schemas)
+    └── DESIGN.md              ← Panduan desain UI
 ```
 
 ---
 
-## 🔄 Pipeline Alur Data (End-to-End)
+## Pipeline Alur Data (End-to-End)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  STEP 1: INTERACTIVE DISCOVERY AGENT (LLM CHAT)                │
-│  Input: Natural language chat (minat, hobi, keseharian)        │
-│  ┌─────────────────┐    ┌──────────────┐    ┌───────────────┐  │
-│  │ Chat Endpoint    │───▶│ LLM Router   │───▶│ State Manager  │  │
-│  │ (Menerima pesan  │    │ (Evaluasi:   │    │ (Simpan riwayat│  │
-│  │  dari user)      │    │  Tanya lagi  │    │  wawancara)    │  │
-│  │                  │    │  atau cukup?)│    │                │  │
-│  └─────────────────┘    └───────┬──────┘    └───────────────┘  │
-│                                 │                              │
-│                                 ▼                              │
-│                      ┌─────────────────────┐                   │
-│                      │  LLM Extractor      │                   │
-│                      │  (Generate profile) │                   │
-│                      └─────────────────────┘                   │
-│                                 │                              │
-│  Output: "Shadow CV" / ParsedCV (Pydantic model)               ▼
-└──────────────────────────────────────────────────────┼──────────┘
-                                                       │
-┌──────────────────────────────────────────────────────▼──────────┐
-│  STEP 2: JOB MATCHING (Fusion Scoring)                          │
-│                                                                  │
-│  ┌─────────────────┐  ┌────────────────┐                        │
-│  │  Layer 1:        │  │  Layer 2:      │                        │
-│  │  SBERT Semantic  │  │  ML Prediction │                        │
-│  │  Similarity      │  │  (Log Reg/XGB) │                        │
-│  │  (cosine sim)    │  │                │                        │
-│  └────────┬────────┘  └────────┬───────┘                        │
-│           │                    │                                 │
-│           └─────────────┬──────┘                                 │
-│                         ▼                                        │
-│              ┌──────────────────┐                                │
-│              │  Fusion Score    │                                │
-│              └────────┬─────────┘                                │
-│                       ▼                                          │
-│              ┌──────────────────┐                                │
-│              │  LLM Enrichment  │  ← Gemma 2B narrative          │
-│              └────────┬─────────┘                                │
-│                       ▼                                          │
-│  Output: list[MatchResult] (sorted by final_score desc)         │
-└──────────────────────────────────────────────────────────────────┘
-                                                       │
-┌──────────────────────────────────────────────────────▼──────────┐
-│  STEP 3: SKILL GAP ANALYSIS                                     │
-│                                                                  │
-│  Input: ParsedCV + target JobListing                             │
-│  ┌──────────────────────────────┐  ┌─────────────────────────┐  │
-│  │  Kalkulasi Matematis:         │  │  LLM Enrichment:        │  │
-│  │  - Gap score per skill        │  │  - Narasi summary       │  │
-│  │  - Readiness score (weighted) │  │  - Quick wins           │  │
-│  │  - SKKNI weight multiplier    │  │  - Estimated timeline   │  │
-│  └──────────────────────────────┘  └─────────────────────────┘  │
-│                                                                  │
-│  Output: SkillGapReport (readiness 0–100 + label)               │
-└──────────────────────────────────────────────────────────────────┘
-                                                       │
-┌──────────────────────────────────────────────────────▼──────────┐
-│  STEP 4: CAREER PREDICTION                                      │
-│                                                                  │
-│  ┌──────────────────┐  ┌─────────────────┐  ┌───────────────┐  │
-│  │  A. Career Level  │  │  B. Skill Demand │  │ C. Success    │  │
-│  │  (Heuristic/RF)   │  │  Forecast        │  │ Probability   │  │
-│  │  Junior→...→Exec  │  │  (Linear Trend)  │  │ (Logistic Reg)│  │
-│  └────────┬─────────┘  └────────┬────────┘  └───────────────┘  │
-│           └────────────┬────────┘                               │
-│                        ▼                                         │
-│              ┌──────────────────┐                                │
-│              │  LLM Narrative   │  ← career story + roadmap      │
-│              └────────┬─────────┘                                │
-│                       ▼                                          │
-│  Output: CareerPrediction (narrative + roles + upskilling plan) │
-└──────────────────────────────────────────────────────────────────┘
+                        ┌─────────────────────────────┐
+                        │  Input: User Profile         │
+                        │  (skills, experience, edu,   │
+                        │   salary preference, etc.)   │
+                        └────────────┬────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────────────┐
+│  STEP 1: SEMANTIC SEARCH (FAISS + SBERT)                           │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  vector_store.search()              backend/services/vector_   │ │
+│  │  - Encode query dengan SBERT        store.py                   │ │
+│  │  - FAISS similarity search (cosine)                            │ │
+│  │  - Return top-K candidates (default: 50)                       │ │
+│  └───────────────────────────┬────────────────────────────────────┘ │
+│                              ▼                                     │
+│  Output: list[dict] ranked by cosine similarity                    │
+└──────────────────────────────────────┬──────────────────────────────┘
+                                       │
+┌──────────────────────────────────────▼──────────────────────────────┐
+│  STEP 2: JOB MATCHING (Hybrid Fusion)                              │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  matcher_service.recommend_jobs()  backend/services/matcher_   │ │
+│  │                                                                 │ │
+│  │  ┌──────────────────┐  ┌─────────────────┐                     │ │
+│  │  │  Layer 1:         │  │  Layer 2:       │                     │ │
+│  │  │  Heuristic Scoring│  │  ML Prediction  │                     │ │
+│  │  │  (category,skill, │  │  (LogReg/RF/    │                     │ │
+│  │  │   exp, edu, salary│  │   XGBoost)      │                     │ │
+│  │  │   weights: 0.60)  │  │   weight: 0.40  │                     │ │
+│  │  └────────┬─────────┘  └────────┬────────┘                     │ │
+│  │           └──────────┬──────────┘                               │ │
+│  │                      ▼                                          │ │
+│  │              ┌──────────────┐                                   │ │
+│  │              │ Fusion Score │                                   │ │
+│  │              └──────┬───────┘                                   │ │
+│  └─────────────────────┼──────────────────────────────────────────┘ │
+│                        ▼                                           │
+│  Output: MatchResponse (top-K recommendations + score breakdown)   │
+└──────────────────────────────────────┬──────────────────────────────┘
+                                       │
+┌──────────────────────────────────────▼──────────────────────────────┐
+│  STEP 3: SKILL GAP ANALYSIS (MVP Mock)                             │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  POST /api/v1/skills/gap          backend/api/v1/endpoints/    │ │
+│  │                                     skills.py                  │ │
+│  │  - Membandingkan skill user vs required skills dari lowongan   │ │
+│  │  - Readiness score (0–100) + label (Ready/Almost/Partial/Not) │ │
+│  │  - Gap summary (MVP: mock response, menunggu LLM enrichment)  │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│  Output: SkillGapResponse (readiness_score, matched/missing skills) │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🧩 Module Reference (untuk Backend)
+## Module Reference (untuk Backend)
 
-### `backend/config/settings.py`
-**Peran:** Single source of truth untuk semua konfigurasi.
+### `backend/core/settings.py`
+**Peran:** Single source of truth untuk semua konfigurasi (Pydantic BaseSettings).
 
 | Variabel | Nilai Default | Keterangan |
 |---|---|---|
-| `OLLAMA_MODEL` | `gemma2:2b` | Model lokal LLM utama & ETL |
-| `SBERT_MODEL` | `all-MiniLM-L6-v2` | Embedding model ringan (EN/ID) |
-| `MAX_TOKENS` | `2048` | Maks token per LLM response |
-| `TEMPERATURE` | `0.1` | Rendah = deterministik |
-| `FUSION_WEIGHTS` | `semantic: 0.60, ml: 0.40` | Bobot 2-layer scoring (Expert system dihapus) |
-| `READINESS_LABELS` | `80-100: Ready, 60-79: Almost Ready, ...` | Threshold label kesiapan |
+| `sbert_model` | `paraphrase-multilingual-MiniLM-L12-v2` | SBERT multilingual (EN+ID) |
+| `fusion_weights` | `rule_based: 0.30, semantic: 0.45, ml_predict: 0.25` | Bobot 3-layer scoring |
+| `skill_category_weights` | `hard_skill: 0.40, tool: 0.25, ...` | Bobot per kategori skill |
+| `max_tokens` | `2000` | Maks token per LLM response |
+| `temperature` | `0.1` | Rendah = deterministik |
+| `cors_origins` | `http://localhost:3000,...` | Origin yang diizinkan CORS |
 
-### `backend/config/azure_client.py`
-> **STATUS: DITUNDA / DIHAPUS**
-> Penggunaan Azure Doc Intelligence (OCR) ditunda untuk pengembangan selanjutnya. CV Processing tidak menggunakan Azure.
+> **Catatan Fusion:** Nilai di `settings.py` adalah konfigurasi global. Implementasi aktual di `matcher_service.py` menggunakan `_HYBRID_WEIGHTS = {"ml": 0.40, "heuristic": 0.60}`.
 
-### `backend/ingestion/` (planned — belum dibuat)
-**Peran:** ETL pipeline — scraping & indexing lowongan secara asinkron (berjalan offline/background).
-
-| File | Fungsi Utama | Keterangan |
-|---|---|---|
-| `serpapi_client.py` | `fetch_jobs(query, location)` | Mengambil lowongan via SerpApi Google Jobs |
-| `llm_extractor.py` | `extract_entities(raw_text)` | Gemini Structured Output → JSON skill/edu/exp |
-| `vector_indexer.py` | `upsert_to_vertex(job_embeddings)` | Sinkronisasi SBERT vectors ke Vertex AI |
-
-### `backend/prompts/` (5 files)
-**Peran:** Template prompt LLM API (Claude / Gemini) — setiap file memiliki:
-1. String template dengan `{placeholder}` untuk data injection
-2. `build_*_prompt()` function yang mem-format template + JSON dump
+### `backend/prompts/` (6 files)
+**Peran:** Template prompt untuk Ollama/Gemma 2B — setiap file memiliki string template + `build_*_prompt()` function.
 
 | File | Prompt Constant | Builder Function | Input |
 |---|---|---|---|
 | `system_prompt.py` | `SYSTEM_PROMPT` | — (dipakai langsung) | — |
 | `cv_parser.py` | `CV_PARSE_PROMPT` | `build_cv_parse_prompt(raw_text)` | Raw OCR text |
+| `etl_pipeline.py` | `ETL_EXTRACTION_PROMPT` | `build_etl_extraction_prompt(title, company, desc)` | Job raw text → skills |
 | `job_matcher.py` | `JOB_MATCH_PROMPT` | `build_job_match_prompt(profile, jobs, top_n)` | User profile + jobs list |
 | `skill_gap.py` | `SKILL_GAP_PROMPT` | `build_skill_gap_prompt(profile, job)` | User profile + 1 target job |
 | `career_predict.py` | `CAREER_PREDICT_PROMPT` | `build_career_predict_prompt(profile, ml_pred, trends)` | Profile + ML output + trends |
 
-### `backend/rules/` (POSTPONED)
-> **STATUS: DITUNDA**
-> Penggunaan Rule-based expert system ditunda karena bobot (SKKNI, rules) perlu dipelajari lebih lanjut. Sistem saat ini hanya mengandalkan ML Pred dan Semantic Similarity. File-file di folder ini (`expert_system.py`, `skkni_weights.py`, `inference_engine.py`) diabaikan untuk versi MVP.
+### `backend/services/` (4 core services)
+**Peran:** Business logic utama — menggabungkan heuristic + ML + LLM.
 
-### `backend/services/` (3 files)
-**Peran:** Orchestrator layer — menggabungkan rules + ML + LLM.
-
-**`job_matcher.py` → `match_jobs()`:**
+**`matcher_service.py` → `MatcherService`:**
 ```python
-match_jobs(
-    user_profile: dict,       # ParsedCV.model_dump()
-    job_listings: list[dict], # dari Supabase
-    ml_scores: dict | None,   # {job_id: probability}
-    top_n: int = 5,
-    enrich_with_ai: bool = True,
-) -> list[MatchResult]
+matcher = MatcherService()
+matcher.load_resources()                    # Muat refined_jobs.json + model .pkl
+matcher.recommend_jobs(user_profile,        # Entry point utama
+    top_k=10, category_filter=None)         # → MatchResponse dict
+matcher.get_available_categories()          # → list[str]
+```
+- Heuristic scoring: category (35%) + skill (40%) + exp (15%) + edu (5%) + salary (5%)
+- ML fusion: `0.40 * ml_score + 0.60 * heuristic_score`
+
+**`vector_store.py` → `VectorStore`:**
+```python
+vector_store = VectorStore()
+vector_store.load_index()                   # Muat FAISS index dari disk
+vector_store.search(query_text,             # Semantic search
+    top_k=10, threshold=0.3)                # → list[dict]
+vector_store.get_index_stats()              # → stats dict
+vector_store.get_job_distribution()         # → sebaran provinsi
+vector_store.get_job_category_distribution() # → sebaran kategori
 ```
 
-**`skill_gap.py` → `analyze_skill_gap()`:**
-```python
-analyze_skill_gap(
-    user_profile: dict,
-    target_job: dict,
-    enrich_with_ai: bool = True,
-) -> SkillGapReport
-```
+**`etl_pipeline.py`:**
+- `extract_jobs_from_serpapi()` — Ambil data dari SerpApi Google Jobs
+- `process_with_ai()` — Ekstraksi menggunakan Ollama/Gemma 2B
+- `refine_job_data()` — Post-processing (salary normalisasi, skill dedup)
 
-**`career_predictor.py` → `predict_career()`:**
-```python
-predict_career(
-    user_profile: dict,
-    skill_trends: list[dict] | None = None,
-) -> dict  # CareerPrediction-compatible
-```
+**`data_indexing.py`:**
+- `build_faiss_index()` — Buat FAISS index dari refined_jobs.json
+- `load_faiss_index()` / `save_faiss_index()` — Persistensi index
 
-### `backend/models/schemas.py`
-**Peran:** Pydantic schemas — kontrak data yang ketat.
+### `backend/api/v1/schemas/` (Pydantic v2 per domain)
+**Peran:** Kontrak data untuk setiap endpoint — **sumber kebenaran tipe data API**.
 
-**Schemas utama (gunakan sebagai referensi tipe data):**
-
-| Schema | Dipakai Di | Keterangan |
+| File | Schema Utama | Endpoint |
 |---|---|---|
-| `ParsedCV` | CV Parser output | 12 field: personal_info, education, skills, dll. |
-| `JobListing` | Database / API input | Job posting dengan required_skills |
-| `MatchResult` | Job Matcher output | 3-layer scores + final + skill lists |
-| `SkillGapReport` | Skill Gap output | readiness_score + breakdown + quick_wins |
-| `CareerPrediction` | Career Predictor output | narrative + roles + upskilling roadmap |
-| `CVUploadResponse` | API response | upload_id + parsed_data |
-| `MatchRequest/Response` | API contract | Request: user + top_n; Response: results |
-| `SkillGapRequest` | API contract | user + target_job |
-| `CareerPredictRequest` | API contract | user only |
-
-**Enums:**
-`EducationLevel`, `ProficiencyLevel`, `SkillStatus`, `Priority`, `ReadinessLabel`, `RecommendationTag`, `JobType`
+| `match.py` | `MatchProfileInput`, `MatchRequest`, `MatchResult`, `MatchResponse`, `CategoriesResponse` | `POST /api/v1/match` |
+| `search.py` | `SearchResult`, `SearchResponse`, `StatsResponse`, `JobDistributionResponse`, `JobCategoryDistributionResponse` | `GET /api/v1/search` |
+| `jobs.py` | `JobItem`, `JobListResponse`, `JobDetailResponse` | `GET /api/v1/jobs` |
+| `skills.py` | `SkillGapRequest`, `SkillGapData`, `SkillGapResponse`, `TrendingSkillItem`, `TrendingResponse` | `POST /api/v1/skills/gap` |
 
 ### `backend/models/embedder.py`
-**Peran:** Singleton SBERT wrapper.
-- `embedder.encode(texts)` → `np.ndarray`
-- `embedder.similarity(a, b)` → `float` (0–1)
-- `embedder.similarity_batch(query, candidates)` → `list[float]`
-- `embedder.build_skill_text(profile)` → gabungan skill/exp sebagai teks
-- `embedder.build_job_text(job)` → gabungan job desc/skills sebagai teks
+> **Status:** Tersedia (SBERT singleton), tetapi belum diintegrasikan penuh ke pipeline runtime. Vector search saat ini menggunakan VectorStore yang memuat embedding dari FAISS index yang sudah pre-computed.
 
 ### `backend/utils/`
 **`logger.py`:**
@@ -293,33 +297,35 @@ predict_career(
 **`skill_normalizer.py`:**
 - `normalize_skill("js")` → `"JavaScript"`
 - `normalize_skill_list(skills)` → deduplicated + normalized
-- 60+ alias mapping
+- 100+ alias mapping (EN ↔ ID, singkatan → full name)
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 ```bash
-# === Database ===
-SUPABASE_URL=https://...supabase.co
-SUPABASE_SERVICE_KEY=...
+# === CORS ===
+cors_origins=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000
 
-# === App ===
-APP_ENV=development                    # development | production
-LOG_LEVEL=INFO
-ALLOWED_ORIGINS=http://localhost:3000
+# === Google Cloud (target deployment) ===
+gcp_project_id=your-gcp-project-id
+gcp_location=us-central1
+google_application_credentials=
+
+# === Ollama (local LLM) ===
+# Tidak perlu key, pastikan Ollama berjalan di localhost:11434
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Backend (AI Pipeline + API)
 ```bash
 cd backend/
-cp .env.example .env                   # Isi API keys (jika ada .env.example)
 pip install -r requirements.txt        # Install dependencies
-python -m backend.utils.logger         # Smoke test
+python -m uvicorn main:app --reload    # http://localhost:8000
+python -m backend.utils.logger         # Smoke test logger
 ```
 
 ### Frontend
@@ -331,57 +337,63 @@ npm run dev                            # http://localhost:3000
 
 ---
 
-## 🧠 Panduan untuk Agent / AI Coding Assistant
+## Panduan untuk Agent / AI Coding Assistant
 
 ### Prinsip Arsitektur
-1. **Separation of Concerns:** `backend/` adalah domain logic murni (AI pipeline), `frontend/` adalah presentation layer. FastAPI routes (API layer) belum dibuat — akan ditambahkan di `backend/` juga.
-2. **Backend pipeline bersifat framework-agnostic:** Services di `backend/services/` mengembalikan Pydantic models/dict, BUKAN HTTP response.
-3. **LLM digunakan untuk enrichment, bukan logic inti.** Kalkulasi scoring (fusion, gap, readiness) dilakukan oleh rules/ML terlebih dahulu, Claude menambahkan narasi.
-4. **Semua data flow mengikuti Pydantic schema** di `backend/models/schemas.py` — ini adalah kontrak yang harus dihormati.
+1. **Separation of Concerns:** `backend/services/` adalah domain logic murni, `backend/api/v1/endpoints/` adalah controllers (HTTP layer). Services mengembalikan dict/Pydantic, BUKAN HTTP response.
+2. **LLM digunakan untuk enrichment, bukan logic inti.** Kalkulasi scoring (fusion, gap, readiness) dilakukan oleh heuristic/ML terlebih dahulu.
+3. **Semua data flow mengikuti Pydantic schema** di `backend/api/v1/schemas/` — ini adalah kontrak yang harus dihormati. Frontend types di `frontend/types/` harus mirror schema ini.
+4. **Jangan gunakan `backend/models/` untuk schemas** — folder itu untuk ML model files (.pkl) dan embedder.
 
 ### Saat Menambah Fitur Baru
-1. **Definisikan schema dulu** di `backend/models/schemas.py`
+1. **Definisikan schema dulu** di `backend/api/v1/schemas/`
 2. **Buat prompt** (jika perlu LLM) di `backend/prompts/`
-3. **Tambah rules** (jika ada domain logic) di `backend/rules/`
-4. **Buat service orchestrator** di `backend/services/`
-5. **Expose via API** di `backend/` (FastAPI route — belum dibuat)
-6. **Konsumsi dari frontend** di `frontend/lib/api.ts`
-
-### Saat Mengedit Module yang Ada
-- **Selalu normalize skill** via `backend/utils/skill_normalizer.py` sebelum comparison
-- **Selalu log** langkah penting via `backend/utils/logger.py`
-- **Jangan hardcode bobot** — gunakan `backend/config/settings.py`
-- **Jangan skip Pydantic validation** — gunakan schema dari `backend/models/schemas.py`
+3. **Buat service orchestrator** di `backend/services/`
+4. **Buat controller** di `backend/api/v1/endpoints/`
+5. **Daftarkan router** di `backend/api/v1/api_router.py`
+6. **Update TypeScript types** di `frontend/types/index.ts`
+7. **Buat UI component** di `frontend/components/features/`
 
 ### Status Implementasi
 
 | Komponen | Status | Catatan |
 |---|---|---|
-| `backend/config/` | ✅ Selesai | Settings + Ollama config |
-| `backend/prompts/` | ✅ Selesai | Prompt templates (disesuaikan untuk Gemma 2B) |
-| `backend/rules/` | ❌ Ditunda | Expert system + SKKNI (Pengembangan selanjutnya) |
-| `backend/services/job_matcher.py` | ✅ Selesai | 2-layer fusion scoring (Semantic + ML) |
-| `backend/services/skill_gap.py` | ✅ Selesai | Gap analysis |
-| `backend/services/career_predictor.py` | ✅ Selesai | Heuristic + trend |
-| `backend/services/etl_learning.ipynb` | ✅ Selesai | ETL pipeline (Ollama/Gemma 2B) |
-| `backend/services/retrieval_pipeline.ipynb` | ✅ Selesai | Semantic Search (FAISS + SBERT) |
-| `backend/services/data_indexing.ipynb` | 🟡 Sedang Berjalan | ML Training: RF vs LogReg + EDA + Heatmap |
-| `backend/models/` | ✅ Selesai | Schemas + Embedder |
-| `backend/utils/` | ✅ Selesai | Logger + Normalizer |
+| `backend/core/settings.py` | ✅ Selesai | Pydantic BaseSettings, weights, LLM config |
+| `backend/prompts/` | ✅ Selesai | 6 file prompt untuk Gemma 2B |
+| `backend/rules/*` | ❌ Ditunda | Expert system, SKKNI, Inference Engine |
+| `backend/services/matcher_service.py` | ✅ Selesai | Hybrid: Heuristic (60%) + ML (40%) |
+| `backend/services/vector_store.py` | ✅ Selesai | Semantic Search FAISS + SBERT |
+| `backend/services/etl_pipeline.py` | ✅ Selesai | ETL dari SerpApi → refined_jobs.json |
+| `backend/services/data_indexing.py` | ✅ Selesai | Build/Load FAISS index |
+| `backend/models/embedder.py` | ✅ Selesai | SBERT singleton wrapper |
+| `backend/models/*.pkl` | ✅ Selesai | 3 models: RF, LogReg, XGBoost |
+| `backend/utils/logger.py` | ✅ Selesai | PipelineTrace + timed_step |
+| `backend/utils/skill_normalizer.py` | ✅ Selesai | 100+ alias mapping |
+| `backend/api/v1/endpoints/` | ✅ Selesai | match, search, jobs, skills endpoints |
+| `backend/api/v1/schemas/` | ✅ Selesai | Pydantic v2 per domain |
 | `backend/data/raw/` | ✅ Selesai | ~4.911 raw job listings (18MB JSON) |
-| `backend/data/cleaned/` | ✅ Selesai | Hasil ETL incremental (Ollama/Gemma 2B) |
-| `backend/data/refined/` | ✅ Selesai | Post-processed: salary normalized, skills clean |
-| `backend/data/vector/` | ✅ Selesai | FAISS index (756 jobs ter-index, field `location` ditambahkan) |
-| FastAPI routes | 🔲 Belum | API layer belum dibuat |
-| `frontend/` | 🟡 Partial | Struktur Next.js ada, perlu integrasi API |
+| `backend/data/cleaned/` | ✅ Selesai | Hasil ETL incremental (Ollama) |
+| `backend/data/refined/` | ✅ Selesai | refined_jobs.json (siap FAISS) |
+| `backend/data/vector/` | ✅ Selesai | FAISS index (756 jobs ter-index) |
+| `frontend/` Landing Page | ✅ Selesai | Hero, search bar, map, charts, dll |
+| `frontend/store.ts` | ✅ Selesai | Zustand: user, results, search, skillGap, career |
+| `frontend/api.ts` | ✅ Selesai | Axios clients untuk semua endpoint |
+| `frontend/types/` | ✅ Selesai | TypeScript interfaces mirror Pydantic |
+| `frontend/app/predict/` | 🟡 Scaffold | Form profile + algorithm config |
+| `frontend/app/results/` | 🟡 Scaffold | Dashboard hasil prediksi |
+| `frontend/app/search/` | 🟡 Scaffold | Semantic search engine |
+| `frontend/app/jobs/[id]/` | 🟡 Scaffold | Job detail + SKKNI Radar Chart |
+| Docker setup | 🔲 Belum | Dockerfile & docker-compose belum diisi |
+| Supabase integration | 🔲 Belum | Config ada, koneksi runtime belum aktif |
+| ML Training (synthetic labeling) | 🟡 Sedang Berjalan | RF vs LogReg vs XGB EDA + evaluation |
 
-### Services yang Ditunda (Pengembangan Selanjutnya)
-- `backend/services/cv_preprocessor.py` — preprocessing image (CV OCR ditunda)
-- `backend/services/ocr_engine.py` — Penggunaan Azure Doc Intel dibatalkan
-- `backend/services/skill_extractor.py` — NER parsing dari raw text
-- `backend/rules/*` — Rule-based scoring
+### Services yang Ditunda
+- `backend/services/cv_preprocessor.py` — Image preprocessing (CV OCR)
+- `backend/services/ocr_engine.py` — OCR extraction (dibatalkan)
+- `backend/services/skill_extractor.py` — NER + LLM parsing dari raw text
+- `backend/rules/*` — Rule-based expert system + SKKNI weights
 
-### Dependensi Utama (berdasarkan requirements.txt)
+### Dependensi Utama
 | Package | Versi | Peran |
 |---|---|---|
 | `ollama` | latest | LLM lokal (Gemma 2B) |
@@ -389,209 +401,188 @@ npm run dev                            # http://localhost:3000
 | `scikit-learn` | 1.6.0 | ML models (RF, LogReg) |
 | `pydantic` | 2.10.3 | Data validation |
 | `fastapi` | 0.115.5 | Web framework |
+| `faiss-cpu` | 1.9.0 | Vector similarity search |
 | `supabase` | latest | Database client |
-| `faiss-cpu` | 1.9.0 | Vector similarity search lokal |
-| `google-cloud-aiplatform`| 1.46.0 | Google Cloud deployment target |
+| `joblib` | latest | Model serialization (.pkl) |
 
 ---
 
-## 📋 API Contract (Planned — untuk Backend)
+## API Contract (Aktual via FastAPI)
 
 ```
-POST /api/v1/cv/upload          → CVUploadResponse
-  Body: multipart/form-data (file)
+# Matching
+POST /api/v1/match                    → MatchResponse
+  Body: { parsed_cv: MatchProfileInput, category_filter?: string }
+  Query: ?limit=10
+GET  /api/v1/match/categories         → CategoriesResponse
 
-POST /api/v1/match              → MatchResponse
-  Body: MatchRequest { user_profile: ParsedCV, top_n: int }
+# Semantic Search
+GET  /api/v1/search                   → SearchResponse
+  Query: ?q=...&limit=10&threshold=0.3
+GET  /api/v1/search/distribution      → JobDistributionResponse
+GET  /api/v1/search/stats             → StatsResponse
+GET  /api/v1/search/jobs_category     → JobCategoryDistributionResponse
 
-POST /api/v1/skill-gap          → SkillGapReport
-  Body: SkillGapRequest { user_profile: ParsedCV, target_job: JobListing }
+# Jobs
+GET  /api/v1/jobs                     → JobListResponse
+  Query: ?limit=10&offset=0
+GET  /api/v1/jobs/{job_id}            → JobDetailResponse
 
-POST /api/v1/career/predict     → CareerPrediction
-  Body: CareerPredictRequest { user_profile: ParsedCV }
+# Skills
+POST /api/v1/skills/gap               → SkillGapResponse
+  Body: { job_id: string, user_skills: string[] }
+GET  /api/v1/skills/trending          → TrendingResponse
 
-GET  /api/v1/jobs               → list[JobListing]
-  Query: ?page=1&limit=20&search=...
+# Health
+GET  /                                → Server status
+GET  /health                          → Health check with stats
 
-GET  /api/v1/skills/trending    → list[TrendingSkill]
+# Legacy (deprecated — backward compatibility)
+POST /api/v1/recommend                → Predictor response (legacy)
+GET  /api/v1/retrieval/search         → Retrieval response (legacy)
 ```
 
 ---
 
-## 🏗️ Konvensi Kode
+## Konvensi Kode
 
-- **Bahasa kode:** Python 3.11+ (agent/backend), TypeScript (frontend)
+- **Bahasa kode:** Python 3.11+ (backend), TypeScript (frontend)
 - **Bahasa komentar/docstring:** Campuran Bahasa Indonesia & English
 - **Formatter:** Black (Python), ESLint + Prettier (TS)
-- **Import style:** Absolute imports dari root package (`from backend.config.settings import ...`)
-- **Naming:**
-  - Python: `snake_case` untuk fungsi/variabel, `PascalCase` untuk class/schema
-  - TypeScript: `camelCase` untuk fungsi, `PascalCase` untuk components/types
-- **Error handling:** Try-except dengan fallback value (jangan crash pipeline, log error dan lanjut)
+- **Import style:** Absolute imports dari root package (`from backend.core.settings import ...`, `from backend.services.matcher_service import ...`)
+- **Naming:** Python: `snake_case` fungsi/variabel, `PascalCase` class/schema. TypeScript: `camelCase` fungsi, `PascalCase` components/types
+- **Error handling:** Try-except dengan fallback value — jangan crash pipeline, log error dan lanjut
 
 ---
 
-## 🚀 ETL Pipeline (Implementasi Aktual)
+## ETL Pipeline & Runtime (Implementasi Aktual)
 
 ### Pipeline 1: Data Ingestion & AI Extraction (Lokal, Offline)
 
-> Dijalankan di `backend/services/etl_learning.ipynb`. Stack: **Ollama (Gemma 2B)** — model LLM lokal yang berjalan tanpa koneksi internet dan tanpa biaya API.
+Dijalankan di `backend/services/etl_learning.ipynb`. Stack: **Ollama (Gemma 2B)** — model LLM lokal tanpa biaya API.
 
 ```text
-┌─────────────────┐    ┌─────────────────────────────┐    ┌──────────────────────────┐
-│ data/raw/       │    │ ETL Stage 1: AI Extraction  │    │ data/cleaned/            │
-│ google_jobs_    │───▶│ (Ollama/Gemma 2B)           │───▶│ cleaned_jobs.json        │
-│ results.json    │    │ - is_potential_job() filter │    │ (incremental, resumable) │
-│ (~4.911 jobs)   │    │ - build_prompt() one-shot   │    │ Schema: JobExtracted      │
-└─────────────────┘    │ - process_with_ai() async   │    └─────────────┬────────────┘
-                       └─────────────────────────────┘                  │
-                                                                         ▼
-                       ┌─────────────────────────────┐    ┌──────────────────────────┐
-                       │ ETL Stage 2: Refinement     │    │ data/refined/            │
-                       │ (Pure Python — tanpa AI)    │───▶│ refined_jobs.json        │
-                       │ - Salary normalization      │    │ (siap untuk FAISS index) │
-                       │ - Skills deduplication      │    └─────────────┬────────────┘
-                       │ - Employment type fix       │                  │
-                       └─────────────────────────────┘                  ▼
-                                                          ┌──────────────────────────┐
-                                                          │ data/vector/             │
-                                                          │ faiss_index.bin          │
-                                                          │ job_mapping.json         │
-                                                          │ (SBERT all-MiniLM-L6-v2) │
-                                                          └──────────────────────────┘
+┌─────────────────┐    ┌──────────────────────────────┐    ┌──────────────────────────┐
+│ data/raw/       │    │ ETL Stage 1: AI Extraction   │    │ data/cleaned/            │
+│ google_jobs_    │───▶│ (Ollama/Gemma 2B)            │───▶│ cleaned_jobs.json        │
+│ results.json    │    │ - is_potential_job() filter  │    │ (incremental, resumable) │
+│ (~4.911 jobs)   │    │ - build_prompt() one-shot    │    └─────────────┬────────────┘
+└─────────────────┘    │ - process_with_ai() async    │                  │
+                       └──────────────────────────────┘                  ▼
+                       ┌──────────────────────────────┐    ┌──────────────────────────┐
+                       │ ETL Stage 2: Refinement      │    │ data/refined/            │
+                       │ (Pure Python — tanpa AI)     │───▶│ refined_jobs.json        │
+                       │ - Salary normalization       │    │ (siap untuk FAISS)       │
+                       │ - Skills deduplication       │    └─────────────┬────────────┘
+                       │ - Employment type fix        │                  │
+                       └──────────────────────────────┘                  ▼
+                                                           ┌──────────────────────────┐
+                                                           │ data/vector/             │
+                                                           │ faiss_index.bin          │
+                                                           │ job_mapping.json         │
+                                                           │ (756 jobs ter-index)     │
+                                                           └──────────────────────────┘
 ```
 
-### Detail ETL: Schema Data Output (`cleaned_jobs.json`)
-
-Setiap record yang berhasil diekstrak memiliki field berikut:
+### Detail ETL: Schema Data Output (`refined_jobs.json`)
 
 | Field | Tipe | Keterangan |
 |---|---|---|
-| `is_valid_job` | bool | False = spam/tidak valid, dibuang di refinement |
+| `is_valid_job` | bool | False = spam, dibuang di refinement |
 | `hard_skills` | list[str] | Tools, bahasa pemrograman, keahlian teknis |
 | `soft_skills` | list[str] | Karakter/sikap kerja (maks 3) |
 | `education_level` | str\|null | SD/SMP/SMA/SMK/D3/S1/S2/S3 |
 | `min_experience_years` | int | Tahun pengalaman minimum |
-| `certifications` | list[str] | Sertifikat/lisensi yang disebut |
+| `certifications` | list[str] | Sertifikat/lisensi |
 | `job_category` | str | 1 dari 14 kategori standar |
 | `job_subcategory` | str | Subkategori bebas |
 | `seniority_level` | str | Entry/Junior/Mid/Senior/Lead/Manager |
 | `work_arrangement` | str | Onsite/Remote/Hybrid |
 | `employment_type` | str | Full-time/Part-time/Contract/Internship/Freelance |
-| `salary_min` | int | Gaji minimum **per bulan** dalam IDR (0 jika tidak diketahui) |
-| `salary_max` | int | Gaji maximum **per bulan** dalam IDR (0 jika tidak diketahui) |
+| `salary_min` / `salary_max` | int | Gaji per bulan dalam IDR (0 jika tidak diketahui) |
 | `original_salary_str` | str\|null | String gaji asli untuk transparansi UI |
-| `is_multi_position` | bool | True = 1 posting untuk banyak posisi |
-| `job_responsibilities` | list[str] | Tanggung jawab utama (maks 3) |
-| `cleaned_title` | str | Judul tanpa noise "Lowongan Kerja"/nama kota |
+| `cleaned_title` | str | Judul tanpa noise |
 
-> ⚠️ **Catatan Kritis — Normalisasi Gaji:** Field `salary_min` & `salary_max` **selalu dalam satuan per bulan** (IDR/bulan). Gaji harian dikalikan 22 (hari kerja/bulan), gaji mingguan dikalikan 4, gaji per jam dikalikan 160. Hal ini penting agar model ML tidak menganggap gaji per hari jauh lebih kecil dari gaji per bulan.
+> **Catatan — Normalisasi Gaji:** `salary_min` & `salary_max` selalu dalam IDR/bulan. Gaji harian ×22, mingguan ×4, per jam ×160.
 
-### Detail ETL: Prompting Strategy
+### Pipeline 2: Runtime (FastAPI + FAISS + MatcherService)
 
-ETL menggunakan **One-Shot Prompting** — memberikan 1 contoh JSON konkret sebelum meminta model memproses data baru. Ini kritis untuk model kecil seperti Gemma 2B:
+Dijalankan per request saat user berinteraksi.
 
-```python
-# build_prompt() di etl_learning.ipynb
-# Strategi: Schema + Rules + 1 Example + Input
-# Token budget: ~380 tokens (optimal untuk Gemma 2B dengan num_predict=400)
-# temperature=0 untuk output deterministik dan mencegah looping
-```
-
-### Pipeline 2: Semantic Retrieval (Runtime)
-
-> Dijalankan **per request** saat user berinteraksi. Kompleksitas: `O(log N)` → `O(K)`.
-
-```
-[User Chat Interaction]
+```text
+[User mengirim profile via API]
         │
         ▼
-1. Interactive Discovery Agent (LLM Interview)
-   AI bertanya tentang minat, hobi, dan rutinitas hingga mendapat profil solid.
+1. POST /api/v1/match
+   → matcher_service.recommend_jobs()
+        │
+        ├── Heuristic scoring (category, skill, exp, edu, salary)
+        ├── ML scoring (LogReg / RF / XGB — jika model tersedia)
+        └── Fusion: 40% ML + 60% Heuristic
         │
         ▼
-2. Stage-1 Retrieval (FAISS Vector Search)
-   Query SBERT dari "Shadow CV" ke FAISS lokal ──▶ Top 50 Kandidat
+2. Top-K recommendations + score breakdown
         │
         ▼
-3. Stage-2 Reranking & Dynamic Fusion
-   - ML Prediction
-   - LLM Enrichment (Gemma 2B)
+3. GET /api/v1/search?q=...
+   → vector_store.search() (FAISS semantic search)
         │
         ▼
-Top 5 Final Matches + Skill Gap Analysis + Career Prediction
+4. POST /api/v1/skills/gap
+   → Skill gap analysis (MVP mock)
 ```
 
 ---
 
-## 📂 Struktur Direktori Revisi (V2.0)
+## Phased Implementation Roadmap
 
-> **Catatan:** Struktur di bawah adalah roadmap V2.0 untuk migrasi ke GCP.
-> Implementasi saat ini menggunakan `backend/` dengan Claude + Azure.
+### Phase 1 — Data Ingestion, ETL & Semantic Retrieval
+- [x] 1.1 Scraping data lowongan mentah via SerpApi (~4.911 jobs)
+- [x] 1.2 ETL extraction notebook (`etl_learning.ipynb`) dengan Ollama/Gemma 2B
+- [x] 1.3 Post-processing `refine_job_data()` (salary normalization, skill dedup)
+- [x] 1.4 Semantic Retrieval & FAISS indexing (`retrieval_pipeline.ipynb`)
+- [x] 1.5 Data Indexing & ML Training pipeline (`data_indexing.ipynb`): 756 jobs ter-index FAISS
+- [x] 1.6 Model ML tersimpan (.pkl): RF, LogReg, XGBoost
+- [ ] 1.7 Evaluasi model selesai (K-Fold, F1, Confusion Matrix) — **sedang berjalan**
 
-```
-backend/
-├── ingestion/                 ← ETL pipeline lowongan (offline/background) — BELUM DIBUAT
-│   ├── serpapi_client.py      ← Paging & crawling dari SerpApi Google Jobs
-│   ├── llm_extractor.py       ← Gemini Structured Output: teks → JSON entitas
-│   └── vector_indexer.py      ← Sinkronisasi SBERT vectors ke Vertex AI
-│
-├── core/                      ← Mesin inferensi runtime — BELUM DIBUAT
-│   ├── dynamic_weights.py     ← Meta-learner untuk bobot fusion adaptif
-│   ├── two_stage_matcher.py   ← Stage-1 Retrieval + Stage-2 LLM Reranker
-│   └── constraint_engine.py   ← Hard/Soft rules (lokasi, pendidikan, SKKNI)
-│
-├── multimodal/                ← CV parsing via Gemini multimodal — BELUM DIBUAT
-│   └── cv_ingestion.py        ← Mengirim PDF/Gambar langsung ke Gemini
-│
-└── config/
-    └── gcp_client.py          ← Inisialisasi Vertex AI & GCP services — BELUM DIBUAT
-```
+### Phase 2 — ML Modelling & Backend API (FastAPI)
+- [x] 2.1 FastAPI routes implemented (match, search, jobs, skills — di `api/v1/`)
+- [x] 2.2 Service layer implemented (matcher_service, vector_store, etl_pipeline)
+- [x] 2.3 Pydantic schemas per domain (`api/v1/schemas/`)
+- [x] 2.4 Health check & CORS middleware
+- [x] 2.5 Async logging via `backend/utils/logger.py`
+- [ ] 2.6 Full LLM enrichment untuk skill gap (masih MVP mock)
+- [ ] 2.7 Persiapan Deployment ke Google Cloud Platform
 
----
-
-## 🗺️ Phased Implementation Roadmap
-
-### Phase 1 — Data Ingestion, ETL & Semantic Retrieval ⚡ `CRITICAL`
-> **Target:** Membangun dataset Gold Standard lowongan dan mengindeksnya dengan SBERT.
-
-- [x] 1.1 Scraping data lowongan mentah via SerpApi → `data/raw/google_jobs_results.json` (~4.911 jobs)
-- [x] 1.2 Buat ETL extraction notebook (`etl_learning.ipynb`) dengan Ollama/Gemma 2B
-- [x] 1.3 Post-processing `refine_job_data()`
-- [x] 1.4 Semantic Retrieval & FAISS indexing: diimplementasi pada `retrieval_pipeline.ipynb`
-- [x] 1.5 Data Indexing & ML Training pipeline (`data_indexing.ipynb`): job mapping diperluas dengan field `location`, 756 data ter-index ke FAISS
-- [ ] 1.6 ML Model Training selesai: RF vs Logistic Regression (EDA + Synthetic Labeling + Evaluation) — **sedang berjalan**
-- [ ] 1.7 Normalisasi entitas via `skill_normalizer.py` dan simpan ke Supabase (opsional)
-
-### Phase 2 — ML Modelling & Backend API (FastAPI) 🟡 `MEDIUM`
-> **Target:** Model ML selesai ditraining & di-evaluate, lalu pipeline dibungkus dalam FastAPI.
-
-- [ ] 2.1 Selesaikan ML training di `data_indexing.ipynb`: Synthetic Labeling → EDA → Preprocessing → RF vs LogReg → Evaluation (K-Fold, F1, Confusion Matrix)
-- [ ] 2.2 Simpan model terbaik (`.pkl`) ke `backend/data/models/`
-- [ ] 2.3 Bungkus pipeline runtime ke dalam FastAPI routes di `backend/main.py`
-- [ ] 2.4 Endpoint job matching: FAISS retrieval + ML re-ranking (fusion score 0.6 semantic + 0.4 ML)
-- [ ] 2.5 Async logging via `backend/utils/logger.py`
-- [ ] 2.6 Persiapan Deployment ke Google Cloud Platform
-
-### Phase 3 — Frontend Integration & UI/UX ⚪ `LOW`
-- [ ] 3.1 Hubungkan Next.js App Router ke FastAPI endpoints
-- [ ] 3.2 Tampilkan list pekerjaan hasil retrieval semantik
+### Phase 3 — Frontend Integration & UI/UX
+- [x] 3.1 Landing page (Hero, search bar, map, category chart)
+- [x] 3.2 Zustand stores (user, results, search, skillGap, career)
+- [x] 3.3 API client (Axios) untuk semua endpoint
+- [x] 3.4 TypeScript types mirror Pydantic schemas
+- [ ] 3.5 Form predict page fully functional
+- [ ] 3.6 Results dashboard with real data
+- [ ] 3.7 Job detail + SKKNI Radar Chart integration
 
 ### Phase 4 — Pengembangan Selanjutnya (Ditunda)
-- CV Parsing (Image OCR, Azure Doc Intelligence)
-- Rule-based Expert System (Penghitungan SKKNI dan Hard/Soft rules)
+- Full LLM enrichment (Gemma 2B) untuk skill gap narrative & career prediction
+- Rule-based Expert System (SKKNI weights, hard/soft rules)
+- CV Parsing (Image OCR, Azure Doc Intelligence — dibatalkan, alternatif lokal)
+- Docker setup & deployment automation
 
 ---
 
-## ⚠️ Known Issues & Decisions
+## Known Issues & Decisions
 
 | Issue | Keputusan | Alasan |
 |---|---|---|
-| Gemma 2B halusinasi nilai salary | `salary=0` jika tidak eksplisit disebut; regex fallback di `refine_job_data()` | Model kecil sering mengarang angka |
+| Gemma 2B halusinasi nilai salary | `salary=0` jika tidak eksplisit; regex fallback di refinement | Model kecil sering mengarang angka |
 | Gaji per hari vs per bulan tidak konsisten | Konversi ke IDR/bulan (×22/×4/×160); simpan `original_salary_str` | Unit inconsistency merusak ML scoring |
 | Gemma 2B looping output | `temperature=0`, `num_predict=400`, try-except di `process_with_ai()` | Mencegah infinite generation |
-| Data duplikat saat resume | `job_id` set untuk skip yang sudah ada | Proses ETL bisa diinterrupt & dilanjutkan |
-| `soft_skills` lebih dari 3 item | Filter `len(s.split()) <= 3` di refinement | Prompt sudah ada `max3` tapi model terkadang melanggar |
-| `job_subcategory` kadang berupa list | Fungsi `build_job_text()` menggunakan `to_str()` yang handle list & string | Field ini bisa list atau string dari output Gemma 2B |
-| Pilihan algoritma ML Layer 2 | **Random Forest** sebagai model utama, **Logistic Regression** sebagai baseline pembanding | 756 data terlalu kecil untuk XGBoost; RF lebih stabil & interpretable untuk presentasi |
-| Data ML hanya 756 baris | Gunakan **5-Fold Cross Validation** agar setiap data sempat jadi training & test set | Mitigasi data kecil tanpa harus scraping ulang |
+| Data duplikat saat resume ETL | `job_id` set untuk skip yang sudah ada | Proses bisa diinterrupt & dilanjutkan |
+| `soft_skills` > 3 item | Filter `len(s.split()) <= 3` di refinement | Prompt `max3` kadang dilanggar model |
+| `job_subcategory` kadang list | `to_str()` di `build_job_text()` handle list & string | Output Gemma 2B tidak konsisten |
+| Data ML hanya 756 baris | **5-Fold Cross Validation** | Mitigasi data kecil tanpa scraping ulang |
+| 3 models tersimpan (RF, LogReg, XGB) | Default: `logistic_regression.pkl` (di `matcher_service.py`) | XGB too complex for 756 rows; RF for presentation; LogReg for baseline |
+| Fusion weights di settings.py vs matcher_service.py tidak sinkron | `settings.py` = 3-layer (0.30/0.45/0.25), `matcher_service.py` = 2-layer (0.40/0.60) | Settings.py adalah konfigurasi global yang belum dipakai; matcher_service.py adalah implementasi aktual |
+| Skill gap analysis masih MVP mock | `POST /api/v1/skills/gap` return data hardcoded | Menunggu integrasi Gemma 2B untuk enrichment penuh |
+| Frontend mock data tidak akurat | "124,502 jobs", "94.8% match rate" adalah placeholder | Belum diupdate sesuai data aktual (756 jobs) |

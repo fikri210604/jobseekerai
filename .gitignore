@@ -30,10 +30,11 @@ htmlcov/
 backend/data/raw/
 backend/data/scrap/
 backend/data/fetch/
-# Biarkan data yang sudah diproses dan model tetap ter-commit (ukurannya kecil, total ~25MB)
-# backend/models/*.pkl
-# backend/models/*.bin
-# backend/models/*.h5
+
+# Abaikan ML Models (Gunakan DVC / DagsHub)
+backend/models/*.pkl
+backend/models/*.bin
+backend/models/*.h5
 
 # ==============================
 # Frontend (Node / Next.js)

@@ -1,0 +1,28 @@
+# ========================================================
+# .gcloudignore - Aturan khusus untuk Google Cloud Deploy
+# ========================================================
+# File ini memastikan gcloud mengabaikan file yang sama
+# dengan .dockerignore, TETAPI tetap memasukkan data & model
+# meskipun mereka di-ignore oleh Git (karena DagsHub).
+
+#!include:.dockerignore
+
+# JANGAN ignore folder data & model (wajib di-deploy ke Cloud Run)
+!models/
+!models/*.pkl
+!data/
+!data/cleaned/
+!data/vector/
+!data/retrieval/
+
+# Abaikan model sbert lokal yang ukurannya 470MB (karena Dockerfile akan men-downloadnya sendiri via internet GCP yang cepat)
+data/retrieval/sbert_model_lokal/
+
+# Abaikan file lokal / environment lainnya
+.git/
+venv/
+.venv/
+__pycache__/
+*.ipynb
+*.env
+.env

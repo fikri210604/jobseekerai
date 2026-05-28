@@ -212,27 +212,9 @@ function Marker({
   );
 }
 
-export default function LandingPage() {
-  return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Global DotGrid Background */}
-      <div className="fixed inset-0 z-0">
-        <DotGrid
-          dotSize={4}
-          gap={32}
-          baseColor="#30363d"
-          activeColor="#5e6ad2"
-          proximity={150}
-          speedTrigger={50}
-          shockRadius={200}
-          shockStrength={3}
-          maxSpeed={3000}
-          resistance={600}
-          returnDuration={1.5}
-          className="opacity-50"
-        />
-      </div>
-
+  export default function LandingPage() {
+    return (
+      <div className="relative min-h-screen overflow-hidden">
       <div className="relative z-10 mx-auto max-w-7xl space-y-24 px-4 py-10 sm:px-6 lg:px-8">
         <section className="px-4 py-16 text-center sm:px-8 lg:py-20">
           <div className="mx-auto max-w-5xl">

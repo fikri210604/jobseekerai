@@ -72,5 +72,4 @@ celery==5.4.0                    # Distributed Task Queue
 vertexai
 
 flashtext
-ollama
 
