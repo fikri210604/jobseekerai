@@ -11,6 +11,8 @@ Akses ReDoc:
 """
 
 import logging
+import asyncio
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -30,23 +32,49 @@ from backend.core.settings import settings
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
+# Flag untuk track apakah resources sudah siap
+_resources_ready = False
+
+
+def _load_resources_background():
+    """Load semua resource berat di background thread agar tidak block startup."""
+    global _resources_ready
+    try:
+        logger.info("⏳ [Background] Memuat data lowongan + model ML...")
+        match_stats = matcher.load_resources()
+        logger.info(
+            f"📊 [Background] Matcher: {match_stats['jobs_loaded']:,} jobs | "
+            f"ML model: {'✅' if match_stats['model_loaded'] else '⚠️ Heuristic fallback'}"
+        )
+
+        logger.info("⏳ [Background] Memuat vector index...")
+        faiss_ok = vector_store.load_index()
+        logger.info(
+            f"🔍 [Background] Vector index: "
+            f"{'✅ loaded' if faiss_ok else '⚠️ not found (semantic search unavailable)'}"
+        )
+
+        _resources_ready = True
+        logger.info("✅ [Background] Semua resource siap!")
+    except Exception as e:
+        logger.error(f"❌ [Background] Gagal memuat resource: {e}")
+
 
 # ── Startup / Shutdown Lifecycle ───────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Muat semua resource berat (model, FAISS index) sekali saat startup."""
+    """
+    Startup: mulai loading resource di background thread.
+    Server langsung siap menerima request (port bound) tanpa tunggu model selesai load.
+    Health check endpoint akan mengembalikan 'warming_up' sampai resource siap.
+    """
     logger.info("🚀 SkillBridge AI Backend sedang starting up...")
 
-    # 1. Muat data lowongan + model ML
-    match_stats = matcher.load_resources()
-    logger.info(
-        f"📊 Matcher: {match_stats['jobs_loaded']:,} jobs | "
-        f"ML model: {'✅' if match_stats['model_loaded'] else '⚠️ Heuristic fallback'}"
-    )
+    # Jalankan loading resource di background thread — TIDAK blocking uvicorn bind port
+    t = threading.Thread(target=_load_resources_background, daemon=True)
+    t.start()
 
-    # 2. Muat FAISS index
-    faiss_ok = vector_store.load_index()
-    logger.info(f"🔍 FAISS index: {'✅ loaded' if faiss_ok else '⚠️ not found (semantic search unavailable)'}")
+    logger.info("🟢 Server siap menerima request. Resource loading berjalan di background...")
 
     yield  # Server berjalan di sini
 
@@ -111,11 +139,14 @@ async def root():
 
 @app.get("/health", tags=["Health"], summary="Health Check")
 async def health_check():
+    # _resources_ready adalah module-level variable di file yang sama
     faiss_stats = vector_store.get_index_stats()
+    status = "healthy" if _resources_ready else "warming_up"
     return {
-        "status":        "healthy",
-        "jobs_loaded":   len(matcher._jobs),
-        "ml_model":      "loaded" if matcher._ml_model is not None else "not_loaded (heuristic fallback)",
-        "faiss_index":   faiss_stats.get("status", "unknown"),
-        "faiss_vectors": faiss_stats.get("total_vectors", 0),
+        "status":          status,
+        "resources_ready": _resources_ready,
+        "jobs_loaded":     len(matcher._jobs),
+        "ml_model":        "loaded" if matcher._ml_model is not None else "not_loaded (heuristic fallback)",
+        "faiss_index":     faiss_stats.get("status", "unknown"),
+        "faiss_vectors":   faiss_stats.get("total_vectors", 0),
     }

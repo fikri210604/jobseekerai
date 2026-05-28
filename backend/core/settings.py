@@ -5,8 +5,21 @@ Validasi tipe otomatis saat startup.
 """
 
 from typing import Dict, Tuple
+from pathlib import Path
 # pyright: ignore [missing-import]
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# ── Env file resolution — kompatibel lokal & Cloud Run ────────────────────────
+# Di Cloud Run, WORKDIR=/app dan source code ada di /app/backend/
+# Di lokal, kita biasanya jalankan dari folder backend/
+_THIS_DIR = Path(__file__).resolve().parent.parent  # → /app/backend atau D:\...\backend
+_ENV_CANDIDATES = [
+    _THIS_DIR / ".env",           # /app/backend/.env (Cloud Run)
+    Path.cwd() / ".env",          # ./env dari working dir saat ini
+    Path("/app/backend/.env"),    # Fallback absolut Cloud Run
+]
+_ENV_FILE = next((str(p) for p in _ENV_CANDIDATES if p.exists()), None)
+
 
 # ── Readiness Label Thresholds ────────────────────────────────────────────────
 READINESS_LABELS = {
@@ -27,7 +40,7 @@ class Settings(BaseSettings):
     """
     Kelas konfigurasi utama. Pydantic otomatis memuat dari env vars.
     """
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     # ── Security & CORS ───────────────────────────────────────────────────────
     # Masukkan origin yang diizinkan, pisahkan dengan koma (contoh: "http://localhost:3000,https://domain.com")

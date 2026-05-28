@@ -59,10 +59,10 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8080/health').raise_for_status()"
+# Tidak menggunakan HEALTHCHECK bawaan Docker karena Cloud Run sudah punya health check sendiri.
+# HEALTHCHECK dihapus agar tidak menambah overhead saat startup.
 
 # Start server
-# Gunakan $PORT agar kompatibel dengan Cloud Run (inject PORT=8080 otomatis)
-CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1"]
+# --timeout-keep-alive 75 → lebih panjang dari Cloud Run request timeout (60s)
+# --no-access-log       → kurangi log noise di Cloud Run
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --timeout-keep-alive 75"]

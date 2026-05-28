@@ -1,15 +1,23 @@
-# agent/models/embedder.py
+# backend/models/embedder.py
 """
 SBERT Embedder — wrapper untuk sentence-transformers.
 Mendukung Bahasa Indonesia dan Inggris.
 Singleton pattern agar model hanya di-load sekali.
+
+PENTING: Model di-load secara LAZY (saat pertama kali encode() dipanggil),
+bukan saat import/instantiation. Ini penting agar uvicorn bisa bind PORT
+sebelum model selesai di-load, sehingga Cloud Run startup tidak timeout.
 """
 
+import logging
 from pathlib import Path
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from backend.core.settings import settings
+
+logger = logging.getLogger(__name__)
+
 
 class Embedder:
     _instance = None
@@ -18,18 +26,31 @@ class Embedder:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-
-            backend_dir = Path(__file__).resolve().parents[1]
-            local_model_path = backend_dir / "data" / "retrieval" / "sbert_model_lokal"
-
-            if local_model_path.exists():
-                cls._instance._model = SentenceTransformer(str(local_model_path))
-            else:
-                cls._instance._model = SentenceTransformer(settings.sbert_model)
-                
+            # JANGAN load model di sini — lazy loading via _ensure_model_loaded()
+            cls._instance._model = None
         return cls._instance
 
+    def _ensure_model_loaded(self) -> None:
+        """Load SBERT model on first use (lazy loading) — tidak block saat import."""
+        if self._model is not None:
+            return
+
+        logger.info("⏳ Loading SBERT model (lazy init)...")
+
+        backend_dir = Path(__file__).resolve().parents[1]
+        local_model_path = backend_dir / "data" / "retrieval" / "sbert_model_lokal"
+
+        if local_model_path.exists():
+            logger.info(f"📦 Menggunakan model lokal dari: {local_model_path}")
+            self._model = SentenceTransformer(str(local_model_path))
+        else:
+            logger.info(f"🌐 Mengunduh SBERT model: {settings.sbert_model}")
+            self._model = SentenceTransformer(settings.sbert_model)
+
+        logger.info("✅ SBERT model berhasil di-load.")
+
     def encode(self, texts: list[str] | str) -> np.ndarray:
+        self._ensure_model_loaded()
         if isinstance(texts, str):
             texts = [texts]
         return self._model.encode(texts, convert_to_numpy=True)
@@ -40,7 +61,7 @@ class Embedder:
         score = cosine_similarity(emb_a, emb_b)[0][0]
         return float(np.clip(score, 0.0, 1.0))
 
-    def similarity_batch(self,query: str,candidates: list[str]) -> list[float]:
+    def similarity_batch(self, query: str, candidates: list[str]) -> list[float]:
         query_emb     = self.encode([query])
         candidate_emb = self.encode(candidates)
         scores        = cosine_similarity(query_emb, candidate_emb)[0]
@@ -69,4 +90,5 @@ class Embedder:
 
 
 # Singleton instance — import dan gunakan langsung
+# Model TIDAK di-load di sini; akan di-load lazy saat encode() pertama kali dipanggil
 embedder = Embedder()
