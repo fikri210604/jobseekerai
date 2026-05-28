@@ -65,4 +65,4 @@ ENV PYTHONPATH=/app
 # Start server
 # --timeout-keep-alive 75 → lebih panjang dari Cloud Run request timeout (60s)
 # --no-access-log       → kurangi log noise di Cloud Run
-CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --timeout-keep-alive 75"]
+CMD uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --timeout-keep-alive 75

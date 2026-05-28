@@ -16,6 +16,7 @@ pydantic-settings==2.7.0
 google-generativeai
 
 # ── NLP / Semantic Search ─────────────────────────────────────
+--extra-index-url https://download.pytorch.org/whl/cpu
 sentence-transformers==3.3.1    # SBERT: paraphrase-multilingual-MiniLM-L12-v2
 torch==2.5.1                    # PyTorch (CPU) — backend untuk sentence-transformers
 transformers==4.47.1            # Hugging Face transformers
