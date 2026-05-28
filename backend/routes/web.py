@@ -8,7 +8,6 @@ import os
 import json
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from backend.services.vector_store import get_index_stats
-from backend.services.etl_pipeline import run_etl
 
 router = APIRouter(prefix="/api/v1/internal", tags=["Internal Pipeline"])
 
@@ -63,20 +62,4 @@ async def trigger_rebuild_index(background_tasks: BackgroundTasks):
     return {
         "success": False,
         "message": "Fungsi pembangunan ulang index belum diimplementasikan di backend. Gunakan notebook retrieval_pipeline.ipynb."
-    }
-
-@router.post("/run-etl")
-async def trigger_etl_pipeline(background_tasks: BackgroundTasks):
-    """
-    Memicu proses ETL (Data Denoising via Gemini) secara asinkron.
-    """
-    if not os.path.exists(RAW_JOBS_PATH):
-        raise HTTPException(status_code=400, detail="File data mentah (raw data) tidak ditemukan.")
-    
-    # Jalankan ETL di background
-    background_tasks.add_task(run_etl)
-    
-    return {
-        "success": True,
-        "message": "Proses ETL (Gemini) telah dimulai di background. Pantau log terminal untuk progres."
     }
