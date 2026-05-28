@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   BrainCircuit,
@@ -9,6 +10,7 @@ import {
   LayoutDashboard,
   Menu,
   Search,
+  BarChart2,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +32,7 @@ const NAV_LINKS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/predict", label: "Analyze", icon: BrainCircuit },
   { href: "/search", label: "Search", icon: Search },
+  { href: "/insights", label: "Insights", icon: BarChart2 },
 ] as const;
 
 function isActivePath(pathname: string, href: string) {
@@ -40,11 +43,8 @@ function isActivePath(pathname: string, href: string) {
 function Brand() {
   return (
     <Link href="/" className="group flex min-w-0 items-center gap-2.5">
-      <div
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg"
-        style={{ background: "var(--sb-indigo)" }}
-      >
-        <Briefcase size={15} color="#fff" strokeWidth={2.5} />
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden">
+        <Image src="/logo.png" alt="SkillBridge AI Logo" width={32} height={32} className="object-cover" />
       </div>
       <span className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-base">
         SkillBridge<span className="text-[var(--sb-indigo)]"> AI</span>

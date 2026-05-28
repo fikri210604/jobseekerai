@@ -19,7 +19,7 @@ import { useResultsStore, useUserStore } from "@/lib/store";
 import { MOCK_RESULTS } from "@/lib/mock-data";
 
 export function UserProfilePanel() {
-  const { skills, education, experienceYears, expectedSalary } = useUserStore();
+  const { skills, education, experienceYears, expectedSalary, location, workArrangement } = useUserStore();
   const { results, hasResults } = useResultsStore();
 
   const displayResults = hasResults ? results : MOCK_RESULTS;
@@ -48,7 +48,7 @@ export function UserProfilePanel() {
               </p>
               <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin size={13} />
-                <span>Indonesia / Remote Ready</span>
+                <span>{location || "Indonesia"} / {workArrangement || "Remote Ready"}</span>
               </div>
             </div>
           </div>
@@ -122,7 +122,7 @@ export function UserProfilePanel() {
               Saved Filters
             </h4>
             <div className="flex flex-wrap gap-2">
-              {["Hybrid", `Rp ${(expectedSalary / 1_000_000).toFixed(0)}jt+`, "Data"].map(
+              {[workArrangement || "Hybrid", `Rp ${(expectedSalary / 1_000_000).toFixed(0)}jt+`, location || "Indonesia"].map(
                 (filter) => (
                   <span
                     key={filter}

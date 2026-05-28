@@ -1,0 +1,615 @@
+﻿=== Cell 0 [markdown] ===
+# Load Dataset
+
+=== Cell 1 [code] ===
+import json
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+import sys
+import random
+
+pd.set_option("display.max_columns", None)
+sns.set_style("whitegrid")
+
+=== Cell 2 [code] ===
+root_path = os.path.abspath(os.path.join(os.getcwd(), '..','..'))
+if root_path not in sys.path:
+    sys.path.append(root_path)
+
+=== Cell 3 [code] ===
+file_path = "../data/vector/job_mapping.json"
+with open(file_path,"r",encoding="utf-8") as f:
+    jobs_data = json.load(f)
+df = pd.DataFrame(jobs_data)
+print(f"Total data yang dimuat : {len(df)}")
+
+
+=== Cell 4 [code] ===
+df.info()
+
+=== Cell 5 [code] ===
+# Cek duplikat hanya pada kolom yang dipastikan bukan list
+exact_duplicates = df.duplicated(subset=['job_id', 'title', 'company']).sum()
+print(f"Duplicates (berdasarkan ID, Judul, Perusahaan): {exact_duplicates}")
+
+
+=== Cell 6 [code] ===
+df.describe()
+
+=== Cell 7 [markdown] ===
+# EDA
+
+=== Cell 8 [code] ===
+fig, axes = plt.subplots(2, 2, figsize=(16, 14))
+# 1. Scatter Plot: Experience vs Salary
+sns.scatterplot(
+    data=df,
+    x="min_experience_years",
+    y="salary_max",
+    ax=axes[0, 0]
+)
+axes[0, 0].set_title("Experience vs Salary")
+# 2. Bar Plot: Distribusi Job Category
+df["job_category"].value_counts().plot(
+    kind="bar",
+    ax=axes[0, 1]
+)
+axes[0, 1].set_title("Distribusi Job Category")
+axes[0, 1].tick_params(axis='x', rotation=45)
+# 3. Box Plot: Seniority vs Salary
+sns.boxplot(
+    data=df,
+    x="seniority_level",
+    y="salary_max",
+    ax=axes[1, 0]
+)
+axes[1, 0].set_title("Seniority vs Salary")
+# 4. Pie Chart: Work Arrangement Distribution
+df["work_arrangement"].value_counts().plot(
+    kind="pie",
+    autopct="%1.1f%%",
+    ax=axes[1, 1]
+)
+axes[1, 1].set_title("Work Arrangement Distribution")
+axes[1, 1].set_ylabel("") 
+plt.tight_layout()
+plt.show()
+
+=== Cell 9 [markdown] ===
+# Preprocessing
+
+=== Cell 10 [code] ===
+# 1. Cek jumlah missing values sebelum dibersihkan
+print("Missing values awal:")
+print(df.isnull().sum())
+
+# 2. Mengisi missing values dengan kategori yang sesuai (String)
+# Kita gunakan 'Unknown' agar tipe data kolom tetap object/string
+df['education_level'] = df['education_level'].fillna('Unknown')
+df['job_subcategory'] = df['job_subcategory'].fillna('General')
+
+
+# 4. Cek kembali hasil pembersihan
+print("\nMissing values setelah dibersihkan:")
+print(df.isnull().sum())
+
+=== Cell 11 [code] ===
+# Clamping Outliers
+df_cleaned = df[
+    ((df['salary_max'] == 0) | (df['salary_max'] <= 100_000_000)) &
+    (df['min_experience_years'] <= 15)
+].copy()
+
+print(f"Data Hasil Menghilangkan Outliers : {df_cleaned}")
+
+=== Cell 12 [markdown] ===
+## Feature Engineering
+
+=== Cell 13 [code] ===
+# Definisi tingkat pendidikan untuk pemetaan numerik
+EDU_RANK = {"SMA": 1, "SMK": 1, "D3": 2, "S1": 3, "S2": 4, "S3": 5, "Unknown": 1}
+
+# Membuat 10 user sintetis awal yang merepresentasikan pasar kerja Indonesia
+synthetic_users = [
+    {
+        "user_id": "U1", "name": "Andi (Junior Backend)", "total_experience_years": 1, 
+        "education_level": "S1", "hard_skills": ["Python", "SQL", "PostgreSQL", "Git", "API"],
+        "soft_skills": ["problem solving", "kerja sama", "berpikir kritis"],
+        "preferred_salary": 6_000_000, "preferred_category": "Technology", "certifications_count": 1
+    },
+    {
+        "user_id": "U2", "name": "Budi (Senior Frontend)", "total_experience_years": 6, 
+        "education_level": "S1", "hard_skills": ["JavaScript", "React", "CSS", "Tailwind", "TypeScript", "Next.js"],
+        "soft_skills": ["kepemimpinan", "komunikasi", "manajemen waktu"],
+        "preferred_salary": 18_000_000, "preferred_category": "Technology", "certifications_count": 2
+    },
+    {
+        "user_id": "U3", "name": "Cici (Fresh Grad Data Analyst)", "total_experience_years": 0, 
+        "education_level": "S1", "hard_skills": ["Python", "SQL", "Tableau", "Excel", "Pandas"],
+        "soft_skills": ["teliti", "berpikir kritis", "komunikasi"],
+        "preferred_salary": 5_000_000, "preferred_category": "Technology", "certifications_count": 0
+    },
+    {
+        "user_id": "U4", "name": "Dedi (UI/UX Designer)", "total_experience_years": 2, 
+        "education_level": "D3", "hard_skills": ["Figma", "UI/UX", "Wireframing", "Prototyping", "Adobe Illustrator"],
+        "soft_skills": ["kreatif", "kerja sama", "adaptasi"],
+        "preferred_salary": 7_000_000, "preferred_category": "Creative & Design", "certifications_count": 1
+    },
+    {
+        "user_id": "U5", "name": "Evi (Digital Marketer)", "total_experience_years": 3, 
+        "education_level": "S1", "hard_skills": ["SEO", "Google Ads", "Social Media", "Copywriting", "Content Strategy"],
+        "soft_skills": ["komunikasi", "kreatif", "negosiasi"],
+        "preferred_salary": 8_000_000, "preferred_category": "Marketing & Sales", "certifications_count": 2
+    },
+    {
+        "user_id": "U6", "name": "Fani (Mechanical Engineer)", "total_experience_years": 4, 
+        "education_level": "S1", "hard_skills": ["AutoCAD", "SolidWorks", "Manufacturing", "Maintenance"],
+        "soft_skills": ["teliti", "disiplin", "kerja sama"],
+        "preferred_salary": 10_000_000, "preferred_category": "Engineering", "certifications_count": 1
+    },
+    {
+        "user_id": "U7", "name": "Gita (Customer Service)", "total_experience_years": 1, 
+        "education_level": "SMA", "hard_skills": ["Communication", "Problem Solving", "Microsoft Office", "Customer Care"],
+        "soft_skills": ["komunikasi", "adaptasi", "disiplin"],
+        "preferred_salary": 4_500_000, "preferred_category": "Customer Service", "certifications_count": 0
+    },
+    {
+        "user_id": "U8", "name": "Hari (Cook / Kitchen St
+
+=== Cell 14 [code] ===
+# ==============================================================================
+# SEL 3: GENERATING PAIRWISE DATASET (USER x JOB COMPATIBILITY - PROBABILISTIC)
+# ==============================================================================
+
+np.random.seed(42) # Set seed untuk reproduksibilitas eksperimen
+
+pairs_data = []
+
+for user_idx, user in df_users.iterrows():
+    user_skills     = [s.lower() for s in user['hard_skills']]
+    user_soft_skills = [s.lower() for s in user.get('soft_skills', [])]
+    user_edu_rank   = EDU_RANK.get(user['education_level'], 1)
+    user_exp        = user['total_experience_years']
+    user_salary     = user['preferred_salary']
+
+    for job_idx, job in df_cleaned.iterrows():
+        # 1. Skill Matching (Problem 1)
+        job_skills = [str(s).lower() for s in job.get('hard_skills', [])]
+        skill_overlap = len(set(user_skills) & set(job_skills))
+        skill_coverage = skill_overlap / max(len(job_skills), 1)
+        
+        job_soft = [str(s).lower() for s in job.get('soft_skills', [])]
+        soft_overlap = len(set(user_soft_skills) & set(job_soft))
+        soft_coverage = soft_overlap / max(len(job_soft), 1)
+
+        category_match = int(
+            str(job['job_category']).lower() == str(user['preferred_category']).lower()
+        )
+        job_edu_rank   = EDU_RANK.get(job['education_level'], 1)
+        edu_gap        = job_edu_rank - user_edu_rank
+        
+        # 2. Experience Gap Penalty (Problem 4)
+        required_exp = job['min_experience_years'] or 0
+        exp_gap = user_exp - required_exp
+        exp_score = float(np.exp(-abs(exp_gap) / 3.0))
+        
+        # 3. Salary Continuous Score (Problem 3)
+        salary_min = job['salary_min'] or 0
+        salary_max = job['salary_max'] or 0
+        job_avg_salary = (salary_min + salary_max) / 2 if salary_max > 0 else salary_min
+        
+        if job_avg_salary > 0:
+            salary_ratio = user_salary / job_avg_salary
+            salary_score = float(np.clip(1.0 - abs(1.0 - salary_ratio), 0.0, 1.0))
+            salary_feasible = (user_salary <= salary_max) if salary_max > 0 else (user_salary <= salary_min * 1.5)
+        else:
+            salary_ratio = 1.0
+            salary_score = 1.0
+            salary_feasible = True
+
+        # Skills score normalization (30% coverage sudah dianggap sangat bagus)
+        skills_score = min(skill_coverage / 0.3, 1.0)
+        edu_score = 1.0 if edu_gap <= 0 else (0.5 if edu_gap == 1 else 0.0)
+        
+        # 4. Weights Adjustment (Problem 2)
+        compatibility_score = (
+            0.20 * category_match +
+            0.35 * skills_score +
+            0.20 * exp_score +
+            0.10 * edu_score +
+            0.15 * salary_score
+        )
+        
+        # 5. Soften Bernoulli Probability Bounds (Problem 5)
+        if compatibility_score >= 0.75:
+            prob_match = 0.80
+        elif compatibility_score >= 0.55:
+            prob_match = 0.50
+        elif compatibility_score >= 0.35:
+            
+
+=== Cell 15 [code] ===
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+=== Cell 16 [code] ===
+# 1. Salin dataframe hasil data pairing & sintetis
+df_features = df_pairs.copy()
+
+# 2. Definisikan semua kemungkinan kolom fitur numerik
+possible_feature_cols = [
+    'skill_coverage', 
+    'soft_skill_coverage', 
+    'n_user_skills', 
+    'category_match',
+    'semantic_score',          # Hanya akan dipakai jika ada di dataframe Anda
+    'exp_gap_raw', 
+    'exp_gap_normalized', 
+    'user_exp_years', 
+    'edu_gap',
+    'edu_sufficient', 
+    'salary_feasible', 
+    'salary_ratio', 
+    'is_remote',
+    'is_junior', 
+    'certifications_count'
+]
+
+# 3. Pilih secara dinamis fitur yang BENAR-BENAR ada di dalam df_features
+feature_cols = [col for col in possible_feature_cols if col in df_features.columns]
+
+# 4. Pisahkan Fitur (X) dan Target (y)
+X = df_features[feature_cols]
+y = df_features['is_match']
+
+print("Γ£à Fitur dari data pairing & sintetis berhasil disiapkan!")
+print(f"≡ƒæë Fitur yang digunakan ({len(feature_cols)}): {feature_cols}")
+print(f"≡ƒæë Fitur yang dilewati (tidak ada di data): {list(set(possible_feature_cols) - set(feature_cols))}")
+print(f"Total baris data: {X.shape[0]:,}")
+
+
+=== Cell 17 [markdown] ===
+## Train, Test, dan Validation Split
+
+=== Cell 18 [code] ===
+from sklearn.model_selection import train_test_split
+
+=== Cell 19 [code] ===
+# 1. Definisikan kolom fitur berpasangan (Pairwise Features) yang baru
+feature_cols = [
+    'skill_coverage',
+    'n_user_skills',
+    'category_match',
+    'exp_gap_raw',
+    'exp_gap_normalized',
+    'user_exp_years',
+    'edu_gap',
+    'edu_sufficient',
+    'salary_feasible',
+    'salary_ratio',
+    'is_remote',
+    'is_junior',
+    'certifications_count'
+]
+
+# 2. X (Fitur) dan y (Target) diambil dari df_pairs
+X = df_pairs[feature_cols]
+y = df_pairs['is_match']
+
+# Split pertama: Pisahkan 15% untuk Test Set final
+X_temp, X_test, y_temp, y_test = train_test_split(
+    X, y, 
+    test_size=0.15, 
+    random_state=42, 
+    stratify=y
+)
+
+# Split kedua: Bagi X_temp menjadi Train (70%) dan Validation (15%)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_temp, y_temp, 
+    test_size=0.1765, 
+    random_state=42, 
+    stratify=y_temp
+)
+
+print("=== DATA SPLIT SUCCESSFUL (PAIRWISE DATASET) ===")
+print(f"Jumlah sampel Train Set      (70%) : {X_train.shape[0]}")
+print(f"Jumlah sampel Validation Set (15%) : {X_val.shape[0]}")
+print(f"Jumlah sampel Test Set       (15%) : {X_test.shape[0]}")
+print(f"Total data keseluruhan             : {X_train.shape[0] + X_val.shape[0] + X_test.shape[0]}")
+
+
+=== Cell 20 [markdown] ===
+# Modeling
+
+=== Cell 21 [code] ===
+from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+
+=== Cell 22 [code] ===
+print("="*65)
+print("     ΓÜÖ∩╕Å HYPERPARAMETER TUNING & MODEL TRAINING ΓÜÖ∩╕Å")
+print("="*65)
+# ==============================================================================
+# 1. LOGISTIC REGRESSION (Tuning + Scaling)
+# ==============================================================================
+print("\n≡ƒÜÇ [1/3] Sedang melakukan tuning Logistic Regression...")
+lr_pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('classifier', LogisticRegression(random_state=42, max_iter=1000, class_weight='balanced'))
+])
+lr_param_grid = {'classifier__C': [0.01, 0.1, 1.0, 10.0]}
+lr_grid = GridSearchCV(estimator=lr_pipeline, param_grid=lr_param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+lr_grid.fit(X_train, y_train)
+# Jadikan best_estimator_ sebagai model utama Anda
+lr_model = lr_grid.best_estimator_  
+print(f"   Γ£ö∩╕Å Best Params : {lr_grid.best_params_}")
+print(f"   Γ£ö∩╕Å CV Accuracy : {lr_grid.best_score_:.4f}")
+# ==============================================================================
+# 2. RANDOM FOREST (Tuning Pruning)
+# ==============================================================================
+print("\n≡ƒî▓ [2/3] Sedang melakukan tuning Random Forest...")
+rf_base = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
+rf_param_grid = {
+    'max_depth': [6, 8, 10],
+    'min_samples_split': [15, 30, 50],
+    'min_samples_leaf': [10, 20]
+}
+rf_grid = GridSearchCV(estimator=rf_base, param_grid=rf_param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+rf_grid.fit(X_train, y_train)
+# Jadikan best_estimator_ sebagai model utama Anda
+rf_model = rf_grid.best_estimator_  
+print(f"   Γ£ö∩╕Å Best Params : {rf_grid.best_params_}")
+print(f"   Γ£ö∩╕Å CV Accuracy : {rf_grid.best_score_:.4f}")
+# ==============================================================================
+# 3. XGBOOST CLASSIFIER (Tuning Regularisasi Ketat)
+# ==============================================================================
+print("\nΓÜí [3/3] Sedang melakukan tuning XGBoost Classifier...")
+xgb_base = XGBClassifier(n_estimators=100, random_state=42, eval_metric='logloss', use_label_encoder=False)
+xgb_param_grid = {
+    'max_depth': [3, 4, 5],
+    'learning_rate': [0.01, 0.05, 0.1],
+    'subsample': [0.8, 1.0],
+    'colsample_bytree': [0.8, 1.0]
+}
+xgb_grid = GridSearchCV(estimator=xgb_base, param_grid=xgb_param_grid, cv=5, scoring='accuracy', n_jobs=-1)
+xgb_grid.fit(X_train, y_train)
+# Jadikan best_estimator_ sebagai model utama Anda
+xgb_model = xgb_grid.best_estimator_
+print(f"   Γ£ö∩╕Å Best Params : {xgb_grid.best_params_}")
+print(f"   Γ£ö∩╕Å CV Accuracy : {xgb_grid.best_score_:.4f}")
+# ==============================================================================
+print("\n" + "="*65)
+print("=== PROSES TRAINING SELESAI ===")
+print("Logistic Regression, Random Forest, & XGBoost berhasil dilatih dengan parameter optimal! ≡ƒÜÇ")
+print("="*65)
+
+=== Cell 23 [markdown] ===
+# Evaluation
+
+=== Cell 24 [code] ===
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+
+=== Cell 25 [code] ===
+# 1. Prediksi target pada data Testing (Test Set yang belum pernah dilihat model)
+y_pred_lr = lr_model.predict(X_test)
+y_pred_rf = rf_model.predict(X_test)
+y_pred_xgb = xgb_model.predict(X_test)
+# 2. Cetak Classification Report untuk Logistic Regression
+print("========================================================")
+print(" ≡ƒôè LOGISTIC REGRESSION PERFORMANCE (TEST SET)")
+print("========================================================")
+print(f"Accuracy Score: {accuracy_score(y_test, y_pred_lr):.4f}")
+print(classification_report(y_test, y_pred_lr))
+# 3. Cetak Classification Report untuk Random Forest
+print("\n========================================================")
+print(" ≡ƒî▓ RANDOM FOREST PERFORMANCE (TEST SET)")
+print("========================================================")
+print(f"Accuracy Score: {accuracy_score(y_test, y_pred_rf):.4f}")
+print(classification_report(y_test, y_pred_rf))
+# 4. Cetak Classification Report untuk XGBOOST
+print("\n========================================================")
+print(" ≡ƒî▓ XGBOOST PERFORMANCE (TEST SET)")
+print("========================================================")
+print(f"Accuracy Score: {accuracy_score(y_test, y_pred_xgb):.4f}")
+print(classification_report(y_test, y_pred_xgb))
+
+
+=== Cell 26 [code] ===
+from sklearn.inspection import permutation_importance
+# 1. Hitung Permutation Importance pada Validation Set menggunakan F1-Score sebagai metrik
+result = permutation_importance(
+    xgb_model, X_val, y_val, 
+    n_repeats=10, 
+    random_state=42, 
+    scoring='f1'
+)
+# 2. Masukkan ke dalam DataFrame dan urutkan
+perm_importances = pd.DataFrame({
+    'feature': feature_cols,
+    'importance_mean': result.importances_mean,
+    'importance_std': result.importances_std
+}).sort_values(by='importance_mean', ascending=False)
+# 3. Plot hasilnya dengan plt.barh untuk menghindari bug xerr di Seaborn
+plt.figure(figsize=(10, 6))
+plt.barh(
+    perm_importances['feature'], 
+    perm_importances['importance_mean'], 
+    xerr=perm_importances['importance_std'], 
+    color=sns.color_palette('viridis', len(perm_importances)),
+    edgecolor='black'
+)
+plt.gca().invert_yaxis() # Supaya fitur paling penting tetap berada di paling atas
+plt.title("Permutation Importance - Unbiased (Penurunan F1-score)", fontsize=14, fontweight='bold')
+plt.xlabel("Rata-rata Penurunan F1-score", fontsize=12)
+plt.ylabel("Nama Fitur", fontsize=12)
+plt.tight_layout()
+plt.show()
+
+=== Cell 27 [code] ===
+# 4. Plot Confusion Matrix secara Berdampingan
+plt.figure(figsize=(18, 5))
+# Subplot Confusion Matrix Logistic Regression
+plt.subplot(1, 3, 1)
+sns.heatmap(confusion_matrix(y_test, y_pred_lr), annot=True, fmt='d', cmap='Blues', cbar=False)
+plt.title("Confusion Matrix - Logistic Regression")
+plt.xlabel("Predicted Label")
+plt.ylabel("True Label")
+# Subplot Confusion Matrix Random Forest
+plt.subplot(1, 3, 2)
+sns.heatmap(confusion_matrix(y_test, y_pred_rf), annot=True, fmt='d', cmap='Greens', cbar=False)
+plt.title("Confusion Matrix - Random Forest")
+plt.xlabel("Predicted Label")
+plt.ylabel("True Label")
+
+# Subplot Confusion Matrix XGBOOST
+plt.subplot(1,3,3)
+sns.heatmap(confusion_matrix(y_test, y_pred_xgb), annot=True, fmt='d', cmap='Reds', cbar=False)
+plt.title("Confusion Matrix - XGBOOST")
+plt.xlabel("Predicted Label")
+plt.ylabel("True Label")
+plt.tight_layout()
+plt.show()
+
+
+=== Cell 28 [markdown] ===
+## Learning Rate & Curve Model
+
+=== Cell 29 [code] ===
+from sklearn.linear_model import SGDClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import learning_curve
+
+=== Cell 30 [markdown] ===
+### Learning Rate
+
+=== Cell 31 [code] ===
+# Definisikan variasi Learning Rate (shrinkage) yang akan diuji
+learning_rates = [0.1, 0.01, 0.001, 0.0001]
+colors = ['#d62728', '#1f77b4', '#2ca02c', '#9467bd'] 
+epochs = 60
+history = {lr: [] for lr in learning_rates}
+# Proses simulasi iterasi per epoch (boosting round)
+for lr in learning_rates:
+    
+    # Inisialisasi model XGBoost
+    xgb_model = XGBClassifier(
+        n_estimators=epochs,
+        learning_rate=lr,
+        random_state=42,
+        eval_metric='error',  
+        use_label_encoder=False
+    )
+    
+    # Latih model sambil mengevaluasi Validation Set di setiap iterasi pohon
+    # verbose=False agar tidak membanjiri output log notebook Anda
+    xgb_model.fit(
+        X_train, y_train,
+        eval_set=[(X_val, y_val)],
+        verbose=False
+    )
+    
+    # Ambil log hasil evaluasi performa per epoch
+    evals = xgb_model.evals_result()
+    
+    history[lr] = [1.0 - err for err in evals['validation_0']['error']]
+# ==============================================================================
+# VISUALISASI PERBANDINGAN PROSES BELAJAR MODEL
+# ==============================================================================
+plt.figure(figsize=(11, 6.5))
+# Plot masing-masing kurva konvergensi Learning Rate
+for lr, color in zip(learning_rates, colors):
+    plt.plot(
+        range(1, epochs + 1), history[lr], 
+        label=f'Learning Rate = {lr}', 
+        color=color, linewidth=2.5
+    )
+# Estetika Grafik Premium
+plt.title("Analisis Eksperimen Learning Rate pada XGBoost Classifier\nAkumulasi Akurasi Validasi Berdasarkan Jumlah Pohon (Boosting Rounds)", fontsize=13, fontweight='bold', pad=15)
+plt.xlabel("Epochs (Jumlah Pohon Keputusan yang Ditambahkan)", fontsize=11, fontweight='bold')
+plt.ylabel("Validation Accuracy Score", fontsize=11, fontweight='bold')
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.legend(loc="lower right", frameon=True, shadow=True, fontsize=10)
+plt.tight_layout()
+plt.show()
+
+=== Cell 32 [markdown] ===
+### ROC
+
+=== Cell 33 [code] ===
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+
+=== Cell 34 [code] ===
+# 1. Hitung probabilitas prediksi (untuk kelas positif yaitu 1) pada data Testing
+y_prob_lr = lr_model.predict_proba(X_test)[:, 1]
+y_prob_rf = rf_model.predict_proba(X_test)[:, 1]
+y_prob_xgb = xgb_model.predict_proba(X_test)[:, 1]  # Tambahan untuk XGBoost
+# 2. Hitung metrik ROC-AUC
+fpr_lr, tpr_lr, _ = roc_curve(y_test, y_prob_lr)
+roc_auc_lr = auc(fpr_lr, tpr_lr)
+fpr_rf, tpr_rf, _ = roc_curve(y_test, y_prob_rf)
+roc_auc_rf = auc(fpr_rf, tpr_rf)
+fpr_xgb, tpr_xgb, _ = roc_curve(y_test, y_prob_xgb) 
+roc_auc_xgb = auc(fpr_xgb, tpr_xgb)                
+# 3. Hitung metrik Precision-Recall (Average Precision)
+precision_lr, recall_lr, _ = precision_recall_curve(y_test, y_prob_lr)
+ap_lr = average_precision_score(y_test, y_prob_lr)
+precision_rf, recall_rf, _ = precision_recall_curve(y_test, y_prob_rf)
+ap_rf = average_precision_score(y_test, y_prob_rf)
+precision_xgb, recall_xgb, _ = precision_recall_curve(y_test, y_prob_xgb) 
+ap_xgb = average_precision_score(y_test, y_prob_xgb)                      
+# ==============================================================================
+# 4. VISUALISASI SECARA BERDAMPINGAN (PREMIUM AESTHETICS)
+# ==============================================================================
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+# --- Subplot 1: ROC Curve (Receiver Operating Characteristic) ---
+ax1.plot(fpr_lr, tpr_lr, color='#1f77b4', lw=2.5, label=f'Logistic Regression (AUC = {roc_auc_lr:.4f})')
+ax1.plot(fpr_rf, tpr_rf, color='#2ca02c', lw=2.5, label=f'Random Forest (AUC = {roc_auc_rf:.4f})')
+ax1.plot(fpr_xgb, tpr_xgb, color='#9467bd', lw=2.5, label=f'XGBoost (AUC = {roc_auc_xgb:.4f})') # Tambahan XGBoost (Warna Ungu)
+ax1.plot([0, 1], [0, 1], color='#7f7f7f', linestyle='--', lw=1.5)
+ax1.set_xlim([-0.02, 1.02])
+ax1.set_ylim([-0.02, 1.02])
+ax1.set_xlabel('False Positive Rate (1 - Specificity)', fontsize=11, fontweight='bold')
+ax1.set_ylabel('True Positive Rate (Sensitivity / Recall)', fontsize=11, fontweight='bold')
+ax1.set_title('Receiver Operating Characteristic (ROC) Curve', fontsize=12, fontweight='bold', pad=10)
+ax1.grid(True, linestyle='--', alpha=0.5)
+ax1.legend(loc='lower right', frameon=True, shadow=True)
+# --- Subplot 2: Precision-Recall Curve (Penting untuk kelas yang tidak seimbang!) ---
+ax2.plot(recall_lr, precision_lr, color='#1f77b4', lw=2.5, label=f'Logistic Regression (AP = {ap_lr:.4f})')
+ax2.plot(recall_rf, precision_rf, color='#2ca02c', lw=2.5, label=f'Random Forest (AP = {ap_rf:.4f})')
+ax2.plot(recall_xgb, precision_xgb, color='#9467bd', lw=2.5, label=f'XGBoost (AP = {ap_xgb:.4f})') # Tambahan XGBoost (Warna Ungu)
+ax2.set_xlim([-0.02, 1.02])
+ax2.set_ylim([-0.02, 1.02])
+ax2.set_xlabel('Recall (True Positive Rate)', fontsize=11, fontweight='bold')
+ax2.set_ylabel('Precision (Positive Predictive Value)', fontsize=11, fontweight='bold')
+ax2.set_title('Precision-Recall (PR) Curve', fontsize=12, fontweight='bold', pad=10)
+ax2.grid(True, linestyle='--', alpha=0.5)
+ax2.legend(loc='lower left', frameon=True, 
+
+=== Cell 35 [markdown] ===
+# Model Export
+
+=== Cell 36 [code] ===
+import pickle
+
+=== Cell 37 [code] ===
+model_path_lr = "logistic_regression.pkl"
+model_path_rf = "random_forest.pkl"
+model_path_xgb = "xgboost.pkl"
+with open(model_path_lr, "wb") as f:
+    pickle.dump(lr_model, f)
+print(f"\n≡ƒÄë Model Logistic Regression berhasil disimpan ke: {os.path.abspath(model_path_lr)}")
+with open(model_path_rf, "wb") as f:
+    pickle.dump(rf_model, f)
+print(f"\n≡ƒÄë Model Random Forest berhasil disimpan ke: {os.path.abspath(model_path_rf)}")
+with open(model_path_xgb, "wb") as f:
+    pickle.dump(xgb_model,f)
+print(f"≡ƒÄë Model XGBoost berhasil disimpan ke: {os.path.abspath(model_path_xgb)}")
+
+

@@ -20,6 +20,7 @@ class MatchProfileInput(BaseModel):
     preferred_salary:        Optional[int] = Field(default=0, ge=0, description="Ekspektasi gaji per bulan (Rp).")
     certifications_count:    int           = Field(default=0, ge=0, description="Jumlah sertifikasi yang dimiliki.")
     location:                Optional[str] = Field(default=None, description="Lokasi domisili atau preferensi lokasi kerja kandidat.")
+    work_arrangement:        Optional[str] = Field(default="Full-time", description="Preferensi tipe pekerjaan (contoh: Full-time, Part-time, Remote, Internship).")
 
     model_config = {
         "json_schema_extra": {
@@ -30,6 +31,7 @@ class MatchProfileInput(BaseModel):
                 "total_experience_years": 2,
                 "preferred_category": "Finance",
                 "location": "Jakarta",
+                "work_arrangement": "Full-time",
                 "preferred_salary": 6000000,
                 "certifications_count": 1,
             }

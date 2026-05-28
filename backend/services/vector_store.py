@@ -16,6 +16,8 @@ import json
 import logging
 import numpy as np
 from tqdm import tqdm
+from collections import Counter
+import statistics
 from sklearn.metrics.pairwise import cosine_similarity
 
 from backend.models.embedder import embedder
@@ -49,6 +51,7 @@ class VectorStore:
         self.npy_path  = npy_path
         self._jobs: list[dict]              = []
         self._embeddings: np.ndarray | None = None
+
 
     # ──────────────────────────────────────────────────────────────────────────
     # 1. INISIALISASI & PEMUATAN RESOURCE
@@ -106,15 +109,15 @@ class VectorStore:
             vecs = embedder.encode(batch)
             all_embeddings.append(vecs)
             
-        embeddings = np.vstack(all_embeddings).astype("float32")
+        self._embeddings = np.vstack(all_embeddings).astype("float32")
         
         # Simpan ke .npy agar load berikutnya instant
         os.makedirs(os.path.dirname(self.npy_path), exist_ok=True)
-        np.save(self.npy_path, embeddings)
-        logger.info(f"✅ Embedding selesai! Shape: {embeddings.shape}")
+        np.save(self.npy_path, self._embeddings)
+        logger.info(f"✅ Embedding selesai! Shape: {self._embeddings.shape}")
         logger.info(f"✅ Embeddings berhasil disimpan di {self.npy_path}")
         
-        return embeddings
+        return self._embeddings
 
     # ──────────────────────────────────────────────────────────────────────────
     # 2. PENCARIAN (PUBLIC)
@@ -179,11 +182,9 @@ class VectorStore:
             "share_link"      : job.get("share_link", ""),
             "description"     : job.get("description", ""),
             "job_id"          : job.get("job_id", ""),
-            # ── Field dari detected_extensions (di-flatten) ──────────────
             "salary"          : job.get("detected_extensions", {}).get("salary", ""),
             "posted_at"       : job.get("detected_extensions", {}).get("posted_at", ""),
             "schedule_type"   : job.get("detected_extensions", {}).get("schedule_type", ""),
-            # Biarkan similarity score tetap ada dari tahap sebelumnya
             "similarity_score": job.get("similarity_score", 0.0)
         }
 
@@ -202,128 +203,16 @@ class VectorStore:
             "jobs_count":     len(self._jobs),
         }
 
-    def get_job_distribution(self) -> list[dict]:
-        """Menghitung sebaran lowongan kerja berdasarkan provinsi di Indonesia."""
-        if not self._jobs:
-            return []
-
-        # Mapping string provinsi dari dataset ke nama provinsi di shadcnmaps
-        province_map = {
-            "daerah khusus ibukota jakarta": "Jakarta Raya",
-            "jakarta": "Jakarta Raya",
-            "daerah istimewa yogyakarta": "Yogyakarta",
-            "banten": "Banten",
-            "jawa barat": "Jawa Barat",
-            "jawa tengah": "Jawa Tengah",
-            "jawa timur": "Jawa Timur",
-            "bali": "Bali",
-            "nusa tenggara barat": "Nusa Tenggara Barat",
-            "nusa tenggara timur": "Nusa Tenggara Timur",
-            "aceh": "Aceh",
-            "sumatera utara": "Sumatera Utara",
-            "sumatera barat": "Sumatera Barat",
-            "riau": "Riau",
-            "kepulauan riau": "Kepulauan Riau",
-            "jambi": "Jambi",
-            "bengkulu": "Bengkulu",
-            "sumatera selatan": "Sumatera Selatan",
-            "kepulauan bangka belitung": "Bangka-Belitung",
-            "lampung": "Lampung",
-            "kalimantan barat": "Kalimantan Barat",
-            "kalimantan tengah": "Kalimantan Tengah",
-            "kalimantan selatan": "Kalimantan Selatan",
-            "kalimantan timur": "Kalimantan Timur",
-            "kalimantan utara": "Kalimantan Utara",
-            "sulawesi utara": "Sulawesi Utara",
-            "gorontalo": "Gorontalo",
-            "sulawesi tengah": "Sulawesi Tengah",
-            "sulawesi barat": "Sulawesi Barat",
-            "sulawesi selatan": "Sulawesi Selatan",
-            "sulawesi tenggara": "Sulawesi Tenggara",
-            "maluku": "Maluku",
-            "maluku utara": "Maluku Utara",
-            "papua barat": "Irian Jaya Barat", # shadcnmaps uses Irian Jaya Barat
-            "papua": "Papua",
-        }
-
-        distribution = {}
-        for job in self._jobs:
-            loc = job.get("location", "").lower()
-            if not loc or loc == "indonesia":
-                continue
-                
-            parts = [p.strip() for p in loc.split(",")]
-            # Provinsi biasanya ada di bagian paling akhir sebelum "indonesia" atau di elemen terakhir
-            province_str = parts[-1]
-            if province_str == "indonesia" and len(parts) > 1:
-                province_str = parts[-2]
-            
-            # Coba deteksi apakah ada kecocokan di mapping
-            matched_province = None
-            for key, val in province_map.items():
-                if key in province_str or key in loc:
-                    matched_province = val
-                    break
-            
-            if matched_province:
-                distribution[matched_province] = distribution.get(matched_province, 0) + 1
-
-        result = [{"province": k, "count": v} for k, v in distribution.items()]
-        return sorted(result, key=lambda x: x["count"], reverse=True)
-
-    def get_job_category_distribution(self) -> list[dict]:
-        """
-        Mengembalikan agregasi jumlah lowongan kerja berdasarkan kategori utama 
-        dan sub-kategori yang terurut descending.
-        """
-        category_map = {}
-        for job in self._jobs:
-            cat = job.get("job_category")
-            if not cat:
-                cat = "Lainnya"
-            
-            subcat = job.get("job_subcategory")
-            if isinstance(subcat, list):
-                subcat = ", ".join(str(i) for i in subcat) if subcat else "Umum / General"
-            if not subcat or subcat == "None" or subcat == "null" or subcat == "":
-                subcat = "Umum / General"
-            
-            if cat not in category_map:
-                category_map[cat] = {"count": 0, "subcategories": {}}
-            
-            category_map[cat]["count"] += 1
-            category_map[cat]["subcategories"][subcat] = category_map[cat]["subcategories"].get(subcat, 0) + 1
-            
-        result = []
-        for cat, data in category_map.items():
-            sub_list = [{"subcategory": k, "count": v} for k, v in data["subcategories"].items()]
-            sub_list = sorted(sub_list, key=lambda x: x["count"], reverse=True)
-            result.append({
-                "category": cat,
-                "count": data["count"],
-                "subcategories": sub_list
-            })
-            
-        return sorted(result, key=lambda x: x["count"], reverse=True)
-
-
 vector_store = VectorStore()
 
 def load_index(jobs_path: str = _JOBS_PATH, npy_path: str = _NPY_PATH) -> bool:
     return vector_store.load_index()
 
-
 def search(query_text: str, top_k: int = 50, threshold: float = 0.3) -> list[dict]:
     return vector_store.search(query_text, top_k, threshold)
 
-
-def get_job_category_distribution() -> list[dict]:
-    return vector_store.get_job_category_distribution()
-
-
 def get_index_stats() -> dict:
     return vector_store.get_index_stats()
-
 
 if __name__ == "__main__":
     # Smoke Test Sederhana

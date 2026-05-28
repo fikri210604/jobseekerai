@@ -27,6 +27,7 @@ export async function matchJobs(payload: MatchRequest): Promise<MatchResponse> {
       preferred_salary: payload.parsed_cv.expected_salary,
       certifications_count: payload.parsed_cv.certifications_count,
       location: payload.parsed_cv.location || null,
+      work_arrangement: payload.parsed_cv.work_arrangement || "Full-time",
     },
     category_filter: payload.category_filter ?? null,
   };

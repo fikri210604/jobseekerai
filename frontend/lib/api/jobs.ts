@@ -72,10 +72,8 @@ export type JobDistributionResponse = {
 };
 
 export async function getJobDistribution(): Promise<JobDistributionItem[]> {
-  const res = await apiClient.get<JobDistributionResponse>(
-    "/api/v1/search/distribution"
-  );
-  return res.data.data;
+  const res = await apiClient.get<any>("/api/v1/stats");
+  return res.data.job_distribution || [];
 }
 
 export type SubCategoryItem = {
@@ -95,8 +93,6 @@ export type JobCategoryDistributionResponse = {
 };
 
 export async function getJobCategoryDistribution(): Promise<JobCategoryDistributionItem[]> {
-  const res = await apiClient.get<JobCategoryDistributionResponse>(
-    "/api/v1/search/jobs_category"
-  );
-  return res.data.data;
+  const res = await apiClient.get<any>("/api/v1/stats");
+  return res.data.job_category_distribution || [];
 }

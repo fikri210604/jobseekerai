@@ -31,8 +31,10 @@ interface UserProfileState {
   experienceYears: number;
   expectedSalary: number;
   preferredCategory: string;
+  preferredSubcategory: string;
   certificationsCount: number;
   location: string;
+  workArrangement: string;
   algorithmConfig: AlgorithmConfig;
   isFormReady: boolean;
 
@@ -47,8 +49,10 @@ interface UserProfileState {
   setExperienceYears: (years: number) => void;
   setExpectedSalary: (salary: number) => void;
   setPreferredCategory: (category: string) => void;
+  setPreferredSubcategory: (subcategory: string) => void;
   setCertificationsCount: (count: number) => void;
   setLocation: (location: string) => void;
+  setWorkArrangement: (workArrangement: string) => void;
   setAlgorithmConfig: (config: Partial<AlgorithmConfig>) => void;
   setAlgorithm: (algorithm: AlgorithmType) => void;
   setHybridWeight: (weight: number) => void;
@@ -68,8 +72,10 @@ const defaultProfileState = {
   experienceYears: 0,
   expectedSalary: 5_000_000,
   preferredCategory: "Technology",
+  preferredSubcategory: "Software Engineering",
   certificationsCount: 0,
   location: "Jakarta",
+  workArrangement: "Full-time",
   algorithmConfig: defaultAlgorithmConfig,
   isFormReady: false,
 };
@@ -105,10 +111,12 @@ export const useUserStore = create<UserProfileState>()(
         setEducation: (edu) => set({ education: edu }),
         setExperienceYears: (years) => set({ experienceYears: years }),
         setExpectedSalary: (salary) => set({ expectedSalary: salary }),
-        setPreferredCategory: (preferredCategory) => set({ preferredCategory }),
+        setPreferredCategory: (preferredCategory) => set({ preferredCategory, preferredSubcategory: "" }),
+        setPreferredSubcategory: (preferredSubcategory) => set({ preferredSubcategory }),
         setCertificationsCount: (certificationsCount) =>
           set({ certificationsCount }),
         setLocation: (location) => set({ location }),
+        setWorkArrangement: (workArrangement) => set({ workArrangement }),
 
         setAlgorithmConfig: (config) =>
           set((s) => ({
@@ -136,8 +144,10 @@ export const useUserStore = create<UserProfileState>()(
           experienceYears: s.experienceYears,
           expectedSalary: s.expectedSalary,
           preferredCategory: s.preferredCategory,
+          preferredSubcategory: s.preferredSubcategory,
           certificationsCount: s.certificationsCount,
           location: s.location,
+          workArrangement: s.workArrangement,
           algorithmConfig: s.algorithmConfig,
         }),
       }

@@ -29,6 +29,7 @@ export default function PredictPage() {
     preferredCategory,
     certificationsCount,
     location,
+    workArrangement,
     algorithmConfig,
   } = useUserStore();
 
@@ -58,6 +59,7 @@ export default function PredictPage() {
           preferred_category: preferredCategory || null,
           certifications_count: certificationsCount,
           location,
+          work_arrangement: workArrangement,
         },
         category_filter: preferredCategory || null,
         top_k: 10, 

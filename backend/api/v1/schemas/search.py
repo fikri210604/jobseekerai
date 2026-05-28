@@ -44,37 +44,5 @@ class SearchResponse(BaseModel):
     data:      list[SearchResult]
 
 
-class StatsResponse(BaseModel):
-    """Response untuk GET /api/v1/search/stats."""
-    success:        bool
-    status:         str
-    total_vectors:  int
-    dimension:      Optional[int] = None
-    metadata_count: Optional[int] = None
-
-
-class JobDistributionItem(BaseModel):
-    province: str
-    count: int
-
-class JobDistributionResponse(BaseModel):
-    success: bool
-    data: list[JobDistributionItem]
-
-
-class SubCategoryItem(BaseModel):
-    subcategory: str
-    count: int
-
-
-class JobCategoryDistributionItem(BaseModel):
-    category: str
-    count: int
-    subcategories: list[SubCategoryItem]
-
-
-class JobCategoryDistributionResponse(BaseModel):
-    success: bool
-    data: list[JobCategoryDistributionItem]
 
 

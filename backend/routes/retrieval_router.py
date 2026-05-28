@@ -10,7 +10,8 @@ Tag    : Retrieval Search (Legacy)
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.api.v1.schemas.search import SearchResponse, SearchResult, StatsResponse
+from backend.api.v1.schemas.search import SearchResponse, SearchResult
+from backend.api.v1.schemas.stats import StatsResponse
 from backend.services.vector_store import vector_store
 
 router = APIRouter(prefix="/api/v1/retrieval", tags=["Retrieval Search (Legacy)"])
@@ -39,7 +40,7 @@ async def search_jobs(
 @router.get(
     "/stats",
     response_model=StatsResponse,
-    summary="[Legacy] FAISS Stats — Gunakan GET /api/v1/search/stats",
+    summary="[Legacy] FAISS Stats — Gunakan GET /api/v1/stats",
     deprecated=True,
 )
 async def retrieval_stats() -> StatsResponse:

@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserStore } from "@/lib/store";
+import { AIProfileAuditor } from "./AIProfileAuditor";
+import { CVGuideModal } from "./CVGuideModal";
 
 export function CVTextarea() {
   const { rawCvText, setRawCvText } = useUserStore();
@@ -19,15 +21,18 @@ export function CVTextarea() {
       style={{ background: "var(--sb-surface-1)" }}
     >
       <CardHeader className="px-6 pt-6 pb-0">
-        <CardTitle className="text-[10px] normal-case tracking-widest text-muted-foreground">
-          Teks CV / Resume Opsional
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-[10px] normal-case tracking-widest text-muted-foreground">
+            Teks CV / Resume Opsional
+          </CardTitle>
+          <CVGuideModal />
+        </div>
         <CardDescription className="text-[11px]">
           API matching memakai profil terstruktur. Teks CV disimpan sebagai
           konteks tambahan untuk workflow berikutnya.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col px-6 pb-6 pt-4">
+      <CardContent className="flex flex-1 flex-col px-6 pb-6 pt-4 relative">
         <Textarea
           value={rawCvText}
           onChange={(e) => setRawCvText(e.target.value)}
@@ -41,7 +46,7 @@ export function CVTextarea() {
           }}
         />
         <div
-          className="mt-2 text-right font-mono text-[10px]"
+          className="mt-2 text-left font-mono text-[10px]"
           style={{
             color:
               rawCvText.length > 0
@@ -51,6 +56,9 @@ export function CVTextarea() {
         >
           {rawCvText.length} chars
         </div>
+        
+        {/* Render Auditor Panel Trigger Button */}
+        <AIProfileAuditor />
       </CardContent>
     </Card>
   );

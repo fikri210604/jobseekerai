@@ -39,6 +39,7 @@ export interface ParsedCV {
   preferred_category: string | null;
   certifications_count: number;
   location?: string | null;
+  work_arrangement?: string | null;
 }
 
 export interface MatchRequest {
