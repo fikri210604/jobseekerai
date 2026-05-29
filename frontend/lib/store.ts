@@ -28,11 +28,11 @@ interface UserProfileState {
   skills: string[];
   softSkills: string[];
   education: ParsedCV["education"];
-  experienceYears: number;
+  experienceYears: number | "";
   expectedSalary: number;
   preferredCategory: string;
   preferredSubcategory: string;
-  certificationsCount: number;
+  certificationsCount: number | "";
   location: string;
   workArrangement: string;
   algorithmConfig: AlgorithmConfig;
@@ -46,11 +46,11 @@ interface UserProfileState {
   removeSoftSkill: (skill: string) => void;
   setSoftSkills: (skills: string[]) => void;
   setEducation: (edu: ParsedCV["education"]) => void;
-  setExperienceYears: (years: number) => void;
+  setExperienceYears: (years: number | "") => void;
   setExpectedSalary: (salary: number) => void;
   setPreferredCategory: (category: string) => void;
   setPreferredSubcategory: (subcategory: string) => void;
-  setCertificationsCount: (count: number) => void;
+  setCertificationsCount: (count: number | "") => void;
   setLocation: (location: string) => void;
   setWorkArrangement: (workArrangement: string) => void;
   setAlgorithmConfig: (config: Partial<AlgorithmConfig>) => void;

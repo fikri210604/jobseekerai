@@ -8,6 +8,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, BarChart2, BrainCircuit, TrendingUp, Briefcase, GraduationCap, Banknote, Wifi } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -210,10 +211,11 @@ export default function InsightsPage() {
 
       {/* Error state */}
       {error && (
-        <div className="mb-8 flex items-center gap-3 rounded-xl border border-red-800/30 bg-red-900/10 px-4 py-4 text-sm text-red-400">
-          <AlertCircle size={16} />
-          <span>Gagal memuat data: {error}</span>
-        </div>
+        <Alert variant="destructive" className="mb-8">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Gagal memuat data</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {/* Salary summary stats */}

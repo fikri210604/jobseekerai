@@ -24,6 +24,15 @@ from backend.routes.predictor_router import router as predictor_router  # Legacy
 from backend.routes.retrieval_router import router as retrieval_router  # Legacy (deprecated)
 from backend.routes.web import router as web_router                     # Internal tools
 
+# ── SlowAPI Rate Limiter ──────────────────────────────────────────────────────
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
+
 # ── Services ──────────────────────────────────────────────────────────────────
 from backend.services.matcher_service import matcher
 from backend.services.vector_store import vector_store
@@ -102,6 +111,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 
 
 # ── CORS — Izinkan request dari frontend Next.js ───────────────────────────────

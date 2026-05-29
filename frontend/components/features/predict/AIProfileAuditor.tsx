@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, ArrowRight } from "lucide-react";
+import { Sparkles, Loader2, ArrowRight, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/lib/store";
 import {
@@ -97,9 +98,10 @@ export function AIProfileAuditor() {
               <p className="text-sm">Menganalisis teks CV...</p>
             </div>
           ) : error ? (
-            <div className="rounded-lg bg-red-900/10 p-4 border border-red-800/30 text-red-400 text-sm">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : results?.length === 0 ? (
             <div className="text-center py-12">
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[var(--sb-emerald-dim)] text-[var(--sb-emerald)] mb-4">

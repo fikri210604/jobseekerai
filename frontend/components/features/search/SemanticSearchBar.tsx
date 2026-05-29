@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
-import { Search, MapPin, ArrowRight } from "lucide-react";
+import { Search, MapPin, ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSearchStore } from "@/lib/store";
 import { semanticSearch } from "@/lib/api";
 import { useRouter, usePathname } from "next/navigation";
@@ -27,12 +28,13 @@ export function SemanticSearchBar() {
     query, setQuery,
     setResults,
     isSearching, setSearching,
-    setError,
+    error, setError,
     hasSearched, clearSearch,
   } = useSearchStore();
 
   const [jobValue, setJobValue] = useState(query);
   const [locationValue, setLocationValue] = useState("all");
+  const [showValidationError, setShowValidationError] = useState(false);
 
   const jobInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,19 +46,25 @@ export function SemanticSearchBar() {
   }, [pathname]);
 
   const executeSearch = async (job: string, loc: string) => {
-    const locString = loc === "all" ? "" : loc;
-    const combined = `${job} ${locString}`.trim();
-    if (!combined) return;
+    if (!job.trim()) {
+      setShowValidationError(true);
+      return;
+    }
+    setShowValidationError(false);
 
-    setQuery(combined);
+    setQuery(job.trim());
     setSearching(true);
-    
+
     if (pathname !== "/search") {
       router.push("/search");
     }
 
     try {
-      const response = await semanticSearch({ query: combined, top_k: 10 });
+      const response = await semanticSearch({
+        query: job.trim(),
+        top_k: 10,
+        province: loc !== "all" ? loc : null,
+      });
       setResults(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
@@ -72,6 +80,22 @@ export function SemanticSearchBar() {
 
   return (
     <div className="w-full">
+      {showValidationError && (
+        <Alert variant="warning" className="mx-auto w-full max-w-4xl mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Silahkan isi kolom pencarian terlebih dahulu
+          </AlertDescription>
+        </Alert>
+      )}
+      {error && (
+        <Alert variant="destructive" className="mx-auto w-full max-w-4xl mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
       <div className={`mx-auto w-full max-w-4xl rounded-xl border border-[var(--sb-hairline-strong)] bg-[var(--sb-surface-2)] p-2 shadow-[0_0_40px_-18px_rgba(94,106,210,0.65)] ${pathname === "/search" ? "mb-6" : ""}`}>
         <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
           <div className="flex items-center gap-2 rounded-lg border border-[var(--sb-hairline)] bg-[var(--sb-canvas)] px-3">

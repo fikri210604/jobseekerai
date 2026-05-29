@@ -37,11 +37,12 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     """Response untuk GET /api/v1/search."""
-    success:   bool
-    total:     int
-    query:     str
-    threshold: float
-    data:      list[SearchResult]
+    success:        bool
+    total:          int
+    query:          str
+    threshold:      float
+    province_filter: Optional[str] = None  # Filter wilayah yang digunakan (None = semua wilayah)
+    data:           list[SearchResult]
 
 
 

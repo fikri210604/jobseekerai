@@ -1,8 +1,10 @@
 # backend/api/v1/api_router.py
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from backend.api.dependencies import verify_api_key
 from backend.api.v1.endpoints import match, search, jobs, skills, cv, stats
 
-api_router = APIRouter()
+api_router = APIRouter(dependencies=[Depends(verify_api_key)])
+
 
 api_router.include_router(match.router, prefix="/match", tags=["Matching"])
 api_router.include_router(search.router, prefix="/search", tags=["Search"])

@@ -5,6 +5,8 @@ Hanya bertanggung jawab: menerima request, memanggil service, dan mengembalikan 
 Semua Pydantic schema ada di api/v1/schemas/search.py.
 """
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.api.dependencies import get_vector_store
@@ -21,16 +23,34 @@ router = APIRouter()
     "",
     response_model=SearchResponse,
     summary="Pencarian Semantik Lowongan (FAISS)",
-    description="Cari lowongan kerja menggunakan Semantic Search berbasis FAISS + SBERT.",
+    description=(
+        "Cari lowongan kerja menggunakan Semantic Search berbasis FAISS + SBERT. "
+        "Gunakan parameter `province` untuk memfilter hasil berdasarkan wilayah/provinsi. "
+        "Jika tidak ada lowongan yang cocok untuk wilayah tersebut, `data` akan kosong."
+    ),
 )
 async def search_jobs(
-    q:         str   = Query(..., min_length=2, description="Kata kunci pencarian bebas."),
-    limit:     int   = Query(default=10, ge=1, le=50),
-    threshold: float = Query(default=0.3, ge=0.0, le=1.0),
+    q:         str            = Query(..., min_length=2, description="Kata kunci pencarian bebas."),
+    limit:     int            = Query(default=10, ge=1, le=50),
+    threshold: float          = Query(default=0.3, ge=0.0, le=1.0),
+    province:  Optional[str]  = Query(
+        default=None,
+        description=(
+            "Filter wilayah/provinsi (opsional). "
+            "Contoh: 'Jawa Barat', 'DKI Jakarta', 'Bali'. "
+            "Pencocokan bersifat case-insensitive dan substring match pada field `location`. "
+            "Jika diisi namun tidak ada lowongan yang cocok, response `data` akan kosong."
+        )
+    ),
     vs: VectorStore  = Depends(get_vector_store),
 ) -> SearchResponse:
     try:
-        raw_results = vs.search(query_text=q, top_k=limit, threshold=threshold)
+        raw_results = vs.search(
+            query_text=q,
+            top_k=limit,
+            threshold=threshold,
+            province=province,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal melakukan semantic search: {str(e)}")
 
@@ -40,6 +60,6 @@ async def search_jobs(
         total=len(results),
         query=q,
         threshold=threshold,
+        province_filter=province,
         data=results,
     )
-

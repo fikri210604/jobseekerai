@@ -4,7 +4,6 @@ import {
   ArrowRight,
   BadgeCheck,
   Banknote,
-  Bell,
   BriefcaseBusiness,
   ChartNoAxesCombined,
   Flame,
@@ -37,6 +36,7 @@ import { JobDistributionMap } from "@/components/features/search/JobDistribution
 import { SemanticSearchBar } from "@/components/features/search/SemanticSearchBar";
 import JobCategoryChart from "@/components/features/search/JobCategoryChart";
 import DotGrid from "@/components/ui/DotGrid";
+import { ScrollToTop } from "@/components/ui/ScrollToTop";
 
 export const metadata: Metadata = {
   title: "SkillBridge AI - Bridging Talents to Industry Standards",
@@ -518,14 +518,7 @@ function Marker({
         </div>
       </footer>
 
-      <Button
-        size="icon-lg"
-        className="fixed bottom-6 right-6 z-40 rounded-full shadow-lg"
-        style={{ background: "var(--sb-indigo)", color: "#fff" }}
-        aria-label="Open assistant"
-      >
-        <Bell size={20} />
-      </Button>
+      <ScrollToTop />
     </div>
   );
 }

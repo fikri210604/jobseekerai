@@ -128,6 +128,7 @@ class VectorStore:
         query_text: str,
         top_k: int       = 50,
         threshold: float = 0.3,
+        province: str | None = None,
     ) -> list[dict]:
         """
         Cari Top-K lowongan yang paling relevan dengan teks query.
@@ -136,6 +137,9 @@ class VectorStore:
             query_text: Teks query bebas dari user (contoh: 'Software Engineer Python')
             top_k:      Jumlah maksimal kandidat yang dikembalikan
             threshold:  Batas minimum similarity score (0.0 - 1.0)
+            province:   Filter wilayah/provinsi (opsional). Hanya mengembalikan lowongan
+                        yang field `location`-nya mengandung string province (case-insensitive).
+                        Jika None atau string kosong, filter tidak diterapkan.
 
         Returns:
             List dictionary lowongan kerja lengkap dengan 'similarity_score'.
@@ -144,30 +148,89 @@ class VectorStore:
             logger.error("Vector index belum dimuat. Panggil load_index() terlebih dahulu saat startup.")
             return []
 
+        # Normalisasi filter wilayah
+        province_filter = province.strip().lower() if province and province.strip() else None
+
+        # Mapping alias untuk menangani perbedaan nama di peta frontend vs dataset asli
+        # Contoh: Peta mengirim "Jakarta Raya", dataset berisi "Daerah Khusus Ibukota Jakarta"
+        PROVINCE_ALIASES = {
+            "jakarta raya": ["jakarta"],
+            "dki jakarta": ["jakarta"],
+            "yogyakarta": ["yogyakarta", "jogja"],
+            "daerah istimewa yogyakarta": ["yogyakarta", "jogja"],
+            "banten": ["banten"],
+            "jawa barat": ["jawa barat", "jabar"],
+            "jawa tengah": ["jawa tengah", "jateng"],
+            "jawa timur": ["jawa timur", "jatim"],
+            "bali": ["bali"],
+            "sumatera utara": ["sumatera utara", "sumut"],
+            "sumatera barat": ["sumatera barat", "sumbar"],
+            "sumatera selatan": ["sumatera selatan", "sumsel"],
+            "kalimantan timur": ["kalimantan timur", "kaltim"],
+            "kalimantan barat": ["kalimantan barat", "kalbar"],
+            "kalimantan selatan": ["kalimantan selatan", "kalsel"],
+            "kalimantan tengah": ["kalimantan tengah", "kalteng"],
+            "kalimantan utara": ["kalimantan utara", "kalut"],
+            "sulawesi selatan": ["sulawesi selatan", "sulsel"],
+            "sulawesi utara": ["sulawesi utara", "sulut"],
+            "sulawesi tengah": ["sulawesi tengah", "sulteng"],
+            "sulawesi tenggara": ["sulawesi tenggara", "sultra"],
+            "sulawesi barat": ["sulawesi barat", "sulbar"],
+            "papua": ["papua"],
+            "papua barat": ["papua barat"],
+            "aceh": ["aceh"],
+            "riau": ["riau"],
+            "kepulauan riau": ["kepulauan riau", "kepri"],
+            "jambi": ["jambi"],
+            "bengkulu": ["bengkulu"],
+            "lampung": ["lampung"],
+            "bangka belitung": ["bangka belitung", "babel"],
+            "nusa tenggara barat": ["nusa tenggara barat", "ntb"],
+            "nusa tenggara timur": ["nusa tenggara timur", "ntt"],
+            "maluku": ["maluku"],
+            "maluku utara": ["maluku utara"],
+        }
+
+        if province_filter:
+            # Ambil keyword yang valid, jika tidak ada di alias maka pakai kata asli
+            valid_keywords = PROVINCE_ALIASES.get(province_filter, [province_filter])
+
         # Encode query
         q_vec = embedder.encode([query_text])
-        
-        # Hitung similarity
+
+        # Hitung similarity terhadap seluruh corpus
         scores = cosine_similarity(q_vec, self._embeddings).flatten()
-        
-        # Ambil top-K
-        top_idx = scores.argsort()[::-1][:top_k]
-        
+
+        # Urutkan SEMUA indeks dari similarity tertinggi ke terendah
+        top_idx = scores.argsort()[::-1]
+
         results = []
         for i in top_idx:
             score = float(scores[i])
             if score < threshold:
-                break # Karena array sudah di-sort descending, sisanya pasti lebih kecil
-                
+                break  # Sudah di-sort descending, sisanya pasti lebih kecil
+
             job = dict(self._jobs[i])
+
+            # ── Filter wilayah ─────────────────────────────────────────────
+            if province_filter:
+                job_location = job.get("location", "").lower()
+                # Job dianggap match jika *salah satu* dari valid_keywords ada di location string
+                if not any(kw in job_location for kw in valid_keywords):
+                    continue  # Skip: tidak cocok wilayah
+
             job["similarity_score"] = round(score, 4)
-            # Normalisasi untuk menjaga kesamaan response dengan format FAISS sebelumnya
             job = self._normalize_result(job)
             results.append(job)
 
+            # Hentikan jika sudah cukup hasil setelah filter
+            if len(results) >= top_k:
+                break
+
         logger.info(
-            f"Semantic Search '{query_text[:40]}...' "
-            f"→ Ditemukan {len(results)} hasil (threshold={threshold})"
+            f"Semantic Search '{query_text[:40]}' "
+            f"| province='{province_filter or 'all'}' "
+            f"→ {len(results)} hasil (threshold={threshold})"
         )
         return results
 

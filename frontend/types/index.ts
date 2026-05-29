@@ -53,6 +53,7 @@ export interface MatchRequest {
 export interface SearchRequest {
   query: string;
   top_k?: number;
+  province?: string | null;   // Filter wilayah/provinsi (opsional)
 }
 
 export interface CareerPredictRequest {
@@ -156,12 +157,13 @@ export interface SearchResult {
   posted_at?: string;
 }
 
-/** Wrapper response dari /api/v1/retrieval/search */
+/** Wrapper response dari /api/v1/search */
 export interface SearchResponse {
   success: boolean;
   total: number;
   query: string;
   threshold: number;
+  province_filter: string | null;   // Filter wilayah yang digunakan
   data: SearchResult[];
 }
 

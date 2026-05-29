@@ -104,7 +104,7 @@ export function ProfileForm() {
               min={0}
               step={1}
               value={experienceYears}
-              onChange={(e) => setExperienceYears(Number(e.target.value))}
+              onChange={(e) => setExperienceYears(e.target.value === "" ? "" : Number(e.target.value))}
               className="rounded-lg border border-[var(--sb-hairline)] bg-[var(--sb-canvas)] pl-3 pr-12 text-right font-mono"
             />
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-muted-foreground">
@@ -120,9 +120,8 @@ export function ProfileForm() {
           <div className="relative">
             <Input
               type="number"
-              min={0}
               value={certificationsCount}
-              onChange={(e) => setCertificationsCount(Number(e.target.value))}
+              onChange={(e) => setCertificationsCount(e.target.value === "" ? "" : Number(e.target.value))}
               className="rounded-lg border border-[var(--sb-hairline)] bg-[var(--sb-canvas)] pl-3 pr-12 text-right font-mono"
             />
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-sm text-muted-foreground">

@@ -15,6 +15,7 @@ import {
   JobCategoryDistributionItem,
 } from "@/lib/api/jobs";
 import { BarChart3, AlertCircle } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 function ChartSkeleton() {
   return (
@@ -108,10 +109,12 @@ export default function JobCategoryChart() {
 
   if (error) {
     return (
-      <div className="w-full h-80 flex flex-col items-center justify-center text-center p-6 border border-dashed border-[var(--sb-hairline-strong)] rounded-xl bg-[var(--sb-surface-1)]">
-        <AlertCircle className="size-10 text-destructive mb-3" />
-        <h3 className="text-sm font-semibold text-foreground mb-1">Gagal Memuat Diagram</h3>
-        <p className="text-xs text-muted-foreground max-w-sm">{error}</p>
+      <div className="w-full h-80 flex items-center justify-center p-6">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Gagal Memuat Diagram</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       </div>
     );
   }

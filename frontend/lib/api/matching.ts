@@ -41,9 +41,17 @@ export async function matchJobs(payload: MatchRequest): Promise<MatchResponse> {
 export async function semanticSearch(
   payload: SearchRequest
 ): Promise<SearchResponse> {
-  const res = await apiClient.get<SearchResponse>("/api/v1/search", {
-    params: { q: payload.query, limit: payload.top_k ?? 10 },
-  });
+  const params: Record<string, string | number> = {
+    q: payload.query,
+    limit: payload.top_k ?? 10,
+  };
+
+  // Hanya kirim province jika ada dan bukan "all"
+  if (payload.province && payload.province !== "all") {
+    params.province = payload.province;
+  }
+
+  const res = await apiClient.get<SearchResponse>("/api/v1/search", { params });
   return res.data;
 }
 
