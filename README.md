@@ -1,7 +1,7 @@
 # SkillBridge AI — Intelligent Career Advisor & Job Matching Platform
 
-**Deskripsi:** Sistem AI berbasis multi-layer scoring (Semantic Similarity + ML Prediction) yang menganalisis profil pengguna, mencocokkan dengan lowongan kerja, mengidentifikasi skill gap, dan memprediksi trajektori karir — dikhususkan untuk pasar kerja Indonesia.
-*(Pengolahan CV dan Rule-Based Expert System dipindahkan ke pengembangan selanjutnya)*
+**Deskripsi:** Sistem AI berbasis multi-layer scoring (Semantic Similarity + ML Prediction + Gemini AI) yang menganalisis profil pengguna, mencocokkan dengan lowongan kerja, dan memberikan saran karir yang dipersonalisasi — dikhususkan untuk pasar kerja Indonesia.
+*(Pengolahan CV dan Rule-Based Expert System dipindahkan ke pengembangan selanjutnya)*  
 **Mata Kuliah:** Proyek Spesial Data Science — Semester 6
 
 > **Catatan Penting untuk Agent:** README ini adalah **sumber kebenaran arsitektur**. Selalu baca bagian "Status Implementasi" sebelum membuat perubahan.
@@ -11,10 +11,10 @@
 ## Arsitektur Tingkat Tinggi
 
 ```
-┌──────────────┐     ┌─────────────────────────────────────┐     ┌──────────────┐
-│   Frontend   │────▶│       FastAPI Backend (Clean Arch)  │────▶│   Supabase   │
-│  (Next.js 16)│◀────│  api/v1/endpoints → services       │◀────│  (PostgreSQL)│
-│  Port: 3000  │     │  Port: 8000                         │     └──────────────┘
+┌──────────────┐     ┌─────────────────────────────────────┐
+│   Frontend   │────▶│       FastAPI Backend (Clean Arch)  │
+│  (Next.js 16)│◀────│  api/v1/endpoints → services        │
+│  Cloud Run   │     │  Cloud Run (asia-southeast2)        │
 └──────────────┘     └──────────┬──────────────────────────┘
                                  │
                       ┌──────────▼──────────────────────────┐
@@ -23,25 +23,25 @@
                       │                                     │
                       │  ┌─────────────────────────────┐    │
                       │  │ matcher_service.py           │    │
-                      │  │ (Heuristic + ML fusion)     │    │
+                      │  │ (Heuristic 60% + ML 40%)    │    │
                       │  └─────────────────────────────┘    │
                       │  ┌─────────────────────────────┐    │
                       │  │ vector_store.py              │    │
-                      │  │ (FAISS + SBERT search)      │    │
+                      │  │ (NumPy + SBERT search)      │    │
                       │  └─────────────────────────────┘    │
                       │  ┌─────────────────────────────┐    │
-                      │  │ etl_pipeline.py              │    │
-                      │  │ (Data extraction & cleanup) │    │
+                      │  │ gemini_service.py            │    │
+                      │  │ (Career Advisor via Gemini) │    │
                       │  └─────────────────────────────┘    │
                       └────────────────────────────────────┘
                                  │
                       ┌──────────▼──────────────────────────┐
                       │     External Services                │
-                      │  - Ollama/Gemma 2B (LLM lokal)       │
+                      │  - Google Gemini 2.5 Flash (AI LLM) │
                       │  - SBERT paraphrase-multilingual     │
-                      │  - FAISS (Vector Index lokal)        │
+                      │  - NumPy Embeddings (.npy cache)     │
                       │  - SerpApi (Job Data Source)         │
-                      │  - Google Cloud (target deployment)  │
+                      │  - Google Cloud Run (deployment)     │
                       └─────────────────────────────────────┘
 ```
 
@@ -164,11 +164,11 @@ project-akhir/
                         └────────────┬────────────────┘
                                      │
 ┌────────────────────────────────────▼────────────────────────────────┐
-│  STEP 1: SEMANTIC SEARCH (FAISS + SBERT)                           │
+│  STEP 1: SEMANTIC SEARCH (NumPy + SBERT)                           │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │  vector_store.search()              backend/services/vector_   │ │
 │  │  - Encode query dengan SBERT        store.py                   │ │
-│  │  - FAISS similarity search (cosine)                            │ │
+│  │  - Cosine Similarity via NumPy                                 │ │
 │  │  - Return top-K candidates (default: 50)                       │ │
 │  └───────────────────────────┬────────────────────────────────────┘ │
 │                              ▼                                     │
@@ -185,7 +185,7 @@ project-akhir/
 │  │  │  Heuristic Scoring│  │  ML Prediction  │                     │ │
 │  │  │  (category,skill, │  │  (LogReg/RF/    │                     │ │
 │  │  │   exp, edu, salary│  │   XGBoost)      │                     │ │
-│  │  │   weights: 0.60)  │  │   weight: 0.40  │                     │ │
+│  │  │   weight: 0.60)   │  │   weight: 0.40  │                     │ │
 │  │  └────────┬─────────┘  └────────┬────────┘                     │ │
 │  │           └──────────┬──────────┘                               │ │
 │  │                      ▼                                          │ │
@@ -198,16 +198,16 @@ project-akhir/
 └──────────────────────────────────────┬──────────────────────────────┘
                                        │
 ┌──────────────────────────────────────▼──────────────────────────────┐
-│  STEP 3: SKILL GAP ANALYSIS (MVP Mock)                             │
+│  STEP 3: GEMINI AI CAREER ADVISOR                                  │
 │  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  POST /api/v1/skills/gap          backend/api/v1/endpoints/    │ │
-│  │                                     skills.py                  │ │
-│  │  - Membandingkan skill user vs required skills dari lowongan   │ │
-│  │  - Readiness score (0–100) + label (Ready/Almost/Partial/Not) │ │
-│  │  - Gap summary (MVP: mock response, menunggu LLM enrichment)  │ │
+│  │  POST /api/v1/advisor/career      backend/services/gemini_     │ │
+│  │                                     service.py                 │ │
+│  │  - Terima user profile + top match results dari Step 2        │ │
+│  │  - Generate career narrative, skill roadmap, cover letter     │ │
+│  │  - Powered by Google Gemini 2.5 Flash                         │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                     │
-│  Output: SkillGapResponse (readiness_score, matched/missing skills) │
+│  Output: GeminiAdvisorResponse (narrative, roadmap, cover letter)  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -359,33 +359,35 @@ npm run dev                            # http://localhost:3000
 | Komponen | Status | Catatan |
 |---|---|---|
 | `backend/core/settings.py` | ✅ Selesai | Pydantic BaseSettings, weights, LLM config |
-| `backend/prompts/` | ✅ Selesai | 6 file prompt untuk Gemma 2B |
+| `backend/prompts/` | ✅ Selesai | Prompt templates Gemma 2B (ETL & enrichment) |
 | `backend/rules/*` | ❌ Ditunda | Expert system, SKKNI, Inference Engine |
 | `backend/services/matcher_service.py` | ✅ Selesai | Hybrid: Heuristic (60%) + ML (40%) |
-| `backend/services/vector_store.py` | ✅ Selesai | Semantic Search FAISS + SBERT |
+| `backend/services/vector_store.py` | ✅ Selesai | Semantic Search NumPy + SBERT (tanpa FAISS) |
+| `backend/services/gemini_service.py` | ✅ Selesai | Gemini 2.5 Flash: career narrative, roadmap, cover letter |
+| `backend/services/statistic_service.py` | ✅ Selesai | Statistik pasar kerja dan distribusi provinsi |
 | `backend/services/etl_pipeline.py` | ✅ Selesai | ETL dari SerpApi → refined_jobs.json |
-| `backend/services/data_indexing.py` | ✅ Selesai | Build/Load FAISS index |
+| `backend/services/data_indexing.py` | ✅ Selesai | Build/Load NumPy embedding index |
 | `backend/models/embedder.py` | ✅ Selesai | SBERT singleton wrapper |
 | `backend/models/*.pkl` | ✅ Selesai | 3 models: RF, LogReg, XGBoost |
 | `backend/utils/logger.py` | ✅ Selesai | PipelineTrace + timed_step |
 | `backend/utils/skill_normalizer.py` | ✅ Selesai | 100+ alias mapping |
-| `backend/api/v1/endpoints/` | ✅ Selesai | match, search, jobs, skills endpoints |
+| `backend/api/v1/endpoints/` | ✅ Selesai | match, search, jobs, skills, advisor, stats |
 | `backend/api/v1/schemas/` | ✅ Selesai | Pydantic v2 per domain |
 | `backend/data/raw/` | ✅ Selesai | ~4.911 raw job listings (18MB JSON) |
 | `backend/data/cleaned/` | ✅ Selesai | Hasil ETL incremental (Ollama) |
-| `backend/data/refined/` | ✅ Selesai | refined_jobs.json (siap FAISS) |
-| `backend/data/vector/` | ✅ Selesai | FAISS index (756 jobs ter-index) |
-| `frontend/` Landing Page | ✅ Selesai | Hero, search bar, map, charts, dll |
-| `frontend/store.ts` | ✅ Selesai | Zustand: user, results, search, skillGap, career |
+| `backend/data/refined/` | ✅ Selesai | refined_jobs.json (siap indexing) |
+| `backend/data/retrieval/` | ✅ Selesai | sbert_embeddings.npy (756 jobs ter-embed) |
+| `frontend/` Landing Page | ✅ Selesai | Hero, search bar, map, chart, tech cards |
+| `frontend/app/predict/` | ✅ Selesai | Form profile + algorithm config fully functional |
+| `frontend/app/results/` | ✅ Selesai | Dashboard hasil + Gemini AI Career Advisor |
+| `frontend/app/search/` | ✅ Selesai | Semantic search engine |
+| `frontend/app/jobs/[id]/` | ✅ Selesai | Job detail + Gemini AI Advisor per lowongan |
+| `frontend/store.ts` | ✅ Selesai | Zustand: user, results, search, geminiAdvisor |
 | `frontend/api.ts` | ✅ Selesai | Axios clients untuk semua endpoint |
 | `frontend/types/` | ✅ Selesai | TypeScript interfaces mirror Pydantic |
-| `frontend/app/predict/` | 🟡 Scaffold | Form profile + algorithm config |
-| `frontend/app/results/` | 🟡 Scaffold | Dashboard hasil prediksi |
-| `frontend/app/search/` | 🟡 Scaffold | Semantic search engine |
-| `frontend/app/jobs/[id]/` | 🟡 Scaffold | Job detail + SKKNI Radar Chart |
-| Docker setup | 🔲 Belum | Dockerfile & docker-compose belum diisi |
-| Supabase integration | 🔲 Belum | Config ada, koneksi runtime belum aktif |
-| ML Training (synthetic labeling) | 🟡 Sedang Berjalan | RF vs LogReg vs XGB EDA + evaluation |
+| Backend Deployment | ✅ Selesai | Google Cloud Run (asia-southeast2) |
+| Frontend Deployment | ✅ Selesai | Google Cloud Run (asia-southeast2) |
+| Docker setup | ✅ Selesai | Dockerfile frontend & backend via Cloud Run Source Deploy |
 
 ### Services yang Ditunda
 - `backend/services/cv_preprocessor.py` — Image preprocessing (CV OCR)
@@ -419,19 +421,25 @@ GET  /api/v1/match/categories         → CategoriesResponse
 # Semantic Search
 GET  /api/v1/search                   → SearchResponse
   Query: ?q=...&limit=10&threshold=0.3
-GET  /api/v1/search/distribution      → JobDistributionResponse
-GET  /api/v1/search/stats             → StatsResponse
-GET  /api/v1/search/jobs_category     → JobCategoryDistributionResponse
+
+# Stats & Distribution
+GET  /api/v1/stats                    → StatsResponse (market insights + distribusi)
 
 # Jobs
 GET  /api/v1/jobs                     → JobListResponse
   Query: ?limit=10&offset=0
 GET  /api/v1/jobs/{job_id}            → JobDetailResponse
+GET  /api/v1/jobs/by-link             → JobDetailResponse
+  Query: ?link=<source_link_or_job_id>
 
 # Skills
 POST /api/v1/skills/gap               → SkillGapResponse
-  Body: { job_id: string, user_skills: string[] }
 GET  /api/v1/skills/trending          → TrendingResponse
+
+# Gemini AI Career Advisor
+POST /api/v1/advisor/career           → GeminiAdvisorResponse
+  Body: { user_profile: {...}, match_results: MatchResult[] }
+  Returns: career_narrative, skill_roadmap[], cover_letter_opening
 
 # Health
 GET  /                                → Server status
@@ -582,7 +590,9 @@ Dijalankan per request saat user berinteraksi.
 | `soft_skills` > 3 item | Filter `len(s.split()) <= 3` di refinement | Prompt `max3` kadang dilanggar model |
 | `job_subcategory` kadang list | `to_str()` di `build_job_text()` handle list & string | Output Gemma 2B tidak konsisten |
 | Data ML hanya 756 baris | **5-Fold Cross Validation** | Mitigasi data kecil tanpa scraping ulang |
-| 3 models tersimpan (RF, LogReg, XGB) | Default: `logistic_regression.pkl` (di `matcher_service.py`) | XGB too complex for 756 rows; RF for presentation; LogReg for baseline |
-| Fusion weights di settings.py vs matcher_service.py tidak sinkron | `settings.py` = 3-layer (0.30/0.45/0.25), `matcher_service.py` = 2-layer (0.40/0.60) | Settings.py adalah konfigurasi global yang belum dipakai; matcher_service.py adalah implementasi aktual |
-| Skill gap analysis masih MVP mock | `POST /api/v1/skills/gap` return data hardcoded | Menunggu integrasi Gemma 2B untuk enrichment penuh |
-| Frontend mock data tidak akurat | "124,502 jobs", "94.8% match rate" adalah placeholder | Belum diupdate sesuai data aktual (756 jobs) |
+| 3 models tersimpan (RF, LogReg, XGB) | Default: `logistic_regression.pkl` | XGB too complex for 756 rows; RF for presentation; LogReg for baseline |
+| Fusion weights di settings.py vs matcher_service.py tidak sinkron | `matcher_service.py` = 2-layer (0.40/0.60) adalah implementasi aktual | Settings.py adalah konfigurasi global yang belum dipakai |
+| FAISS diganti NumPy | `vector_store.py` sekarang menggunakan `sbert_embeddings.npy` + cosine similarity NumPy | FAISS tidak bisa berjalan di Cloud Run (dependency/binary issue) |
+| CPU throttling di Cloud Run | Aktifkan `--no-cpu-throttling` pada service backend | Background thread load NumPy dibekukan sebelum selesai tanpa CPU always-on |
+| job_id base64 rusak di URL | Endpoint `GET /api/v1/jobs/by-link?link=...` dibuat agar ID aman dikirim sebagai query param | Karakter `=` dan `/` di base64 merusak URL path routing |
+| Skill Gap Analysis (Competency Gap) | Komponen diganti sepenuhnya oleh Gemini AI Career Advisor | Mock data tidak informatif; Gemini memberikan insight jauh lebih kaya |

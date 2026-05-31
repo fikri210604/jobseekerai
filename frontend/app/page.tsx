@@ -89,26 +89,26 @@ const technologyCards = [
     icon: Layers3,
     title: "SBERT Semantic Matching",
     description:
-      "Memahami makna kontekstual di balik resume dan deskripsi pekerjaan, melampaui pencocokan kata kunci.",
-    token: "BERT_LARGE_V2",
+      "Memahami makna kontekstual di balik resume dan deskripsi pekerjaan, melampaui pencocokan kata kunci biasa.",
+    token: "MULTILINGUAL-L12-V2",
     accent: "var(--sb-indigo)",
     surface: "var(--sb-indigo-dim)",
   },
   {
     icon: ChartNoAxesCombined,
-    title: "XGBoost Analytics",
+    title: "Hybrid ML Scoring",
     description:
-      "Model prediktif untuk memvalidasi probabilitas keberhasilan kandidat berdasarkan sinyal profil dan lowongan.",
-    token: "82% Confidence",
+      "Fusion ML dengan heuristic scoring untuk prediksi akurat.",
+    token: "60% Heuristic + 40% ML",
     accent: "var(--sb-emerald)",
     surface: "var(--sb-emerald-dim)",
   },
   {
-    icon: BadgeCheck,
-    title: "SKKNI Calibration",
+    icon: Sparkles,
+    title: "Gemini AI Career Advisor",
     description:
-      "Profil dan lowongan dikalibrasi dengan standar kompetensi kerja nasional untuk analisis gap yang terarah.",
-    token: "SKKNI READY",
+      "Narasi karir, roadmap skill, dan draft cover letter yang dipersonalisasi secara real-time oleh Gemini AI.",
+    token: "gemini-2.5-flash",
     accent: "var(--sb-amber)",
     surface: "var(--sb-amber-dim)",
   },
@@ -350,15 +350,31 @@ function Marker({
                   Total loker
                 </p>
                 <p className="font-metric text-2xl text-[var(--sb-indigo)]">
-                  124,502
+                  4,911
                 </p>
               </div>
               <div>
                 <p className="font-metric text-xs uppercase text-muted-foreground">
-                  Match rate
+                  Ter-index AI
                 </p>
                 <p className="font-metric text-2xl text-[var(--sb-emerald)]">
-                  94.8%
+                  756
+                </p>
+              </div>
+              <div>
+                <p className="font-metric text-xs uppercase text-muted-foreground">
+                  ML Models
+                </p>
+                <p className="font-metric text-2xl text-[var(--sb-amber)]">
+                  3
+                </p>
+              </div>
+              <div>
+                <p className="font-metric text-xs uppercase text-muted-foreground">
+                  AI Advisor
+                </p>
+                <p className="font-metric text-2xl text-foreground">
+                  Gemini
                 </p>
               </div>
             </div>
@@ -501,7 +517,7 @@ function Marker({
             </span>
             <Separator orientation="vertical" className="hidden h-5 md:block" />
             <span className="font-metric text-xs text-muted-foreground">
-              2026 v2.4.0-stable
+              2026 v3.0.0 — Gemini AI Ready
             </span>
           </div>
           <div className="flex gap-4">
