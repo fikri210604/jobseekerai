@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useGeminiAdvisorStore, useResultsStore, useUserStore } from "@/lib/store";
 import { fetchGeminiAdvice } from "@/lib/api";
-import type { SkillGapRecommendation, JobListing } from "@/types";
+import type { SkillGapRecommendation, JobListing, MatchResult } from "@/types";
 
 // ── Typewriter Hook ───────────────────────────────────────────────────────────
 
@@ -149,7 +149,25 @@ export function GeminiAdvisorCard({ job }: { job?: JobListing }) {
   const [copied, setCopied] = useState(false);
   const fetchedRef = useRef(false);
 
-  const effectiveResults = job ? [job] : results;
+  const effectiveResults: MatchResult[] = job
+    ? [
+        {
+          ...job,
+          rank: 1,
+          confidence_score: 1.0,
+          confidence_pct: "100%",
+          score_method: "Direct Analysis",
+          match_details: {
+            semantic_score: 1.0,
+            ml_prediction_score: 1.0,
+            fusion_score: 1.0,
+            semantic_sim_score: 1.0,
+            extracted_keywords_sim: 1.0,
+            hybrid_score: 1.0,
+          },
+        } as unknown as MatchResult,
+      ]
+    : results;
   const isReady = job ? true : hasResults;
 
   const { displayed: narrativeDisplay, done: narrativeDone } = useTypewriter(
