@@ -55,8 +55,11 @@ function toJobListing(job: BackendJob): JobListing {
 }
 
 export async function getJobById(id: string): Promise<JobListing> {
+  // Gunakan /by-link dengan query param untuk menghindari masalah URL-encoding
+  // pada job_id (base64) atau source_link (URL panjang dengan karakter khusus)
   const res = await apiClient.get<JobDetailResponse>(
-    `/api/v1/jobs/${encodeURIComponent(id)}`
+    `/api/v1/jobs/by-link`,
+    { params: { link: id } }
   );
   return toJobListing(res.data.data);
 }

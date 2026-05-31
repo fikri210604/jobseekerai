@@ -1,0 +1,27 @@
+# Node modules (diinstall ulang saat build)
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Next.js build output (dibuild ulang di Dockerfile)
+.next
+out
+build
+
+# Environment files (jangan masuk image!)
+.env*
+!.env.example
+
+# Development & config files
+.git
+.gitignore
+*.md
+.DS_Store
+.eslintrc*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Coverage & testing
+coverage

@@ -20,6 +20,15 @@ _ENV_CANDIDATES = [
 ]
 _ENV_FILE = next((str(p) for p in _ENV_CANDIDATES if p.exists()), None)
 
+# Paksa muat environment variabel dari file .env
+import os
+try:
+    from dotenv import load_dotenv
+    if _ENV_FILE:
+        load_dotenv(_ENV_FILE, override=True)
+except ImportError:
+    pass
+
 
 # ── Readiness Label Thresholds ────────────────────────────────────────────────
 READINESS_LABELS = {
@@ -53,12 +62,13 @@ class Settings(BaseSettings):
     gcp_location: str = "us-central1"
     google_application_credentials: str = ""
 
-    # ── Gemini (Vertex AI) ────────────────────────────────────────────────────
-    gemini_model: str = "gemini-1.5-flash"
+    # ── Gemini API ────────────────────────────────────────────────────────────
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
     gemini_embedding_model: str = "text-embedding-004"
     sbert_model: str = "paraphrase-multilingual-MiniLM-L12-v2"
     max_tokens: int = 2000
-    temperature: float = 0.1
+    temperature: float = 0.7
 
     # ── Fusion Scoring Weights ────────────────────────────────────────────────
     fusion_weights: Dict[str, float] = {

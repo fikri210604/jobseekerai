@@ -84,6 +84,7 @@ class MatchResult(BaseModel):
     score_method:     str
 
     # Info lowongan
+    job_id:              Optional[str] = None
     title:               str
     company_name:        str
     location:            str

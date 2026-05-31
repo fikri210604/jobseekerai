@@ -74,6 +74,8 @@ export default function ResultsPage() {
 
         <DiagnosticStrip diagnostic={displayDiagnostic} />
 
+        {/* Gemini AI Career Advisor — auto-triggered setelah hasil muncul */}
+
         <div className="flex flex-col gap-4 lg:flex-row">
           <UserProfilePanel />
 

@@ -6,5 +6,6 @@ export * from "./api/jobs";
 export * from "./api/matching";
 export * from "./api/prediction";
 export * from "./api/skills";
+export * from "./api/gemini";
 
 export default apiClient;

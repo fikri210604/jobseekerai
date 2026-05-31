@@ -53,6 +53,30 @@ async def list_jobs(
 
 
 @router.get(
+    "/by-link",
+    response_model=JobDetailResponse,
+    summary="Detail Lowongan via Source Link",
+    description="Kembalikan detail lowongan berdasarkan source_link (query param, tidak perlu URL-encode path).",
+)
+async def get_job_by_link(
+    link: str = Query(..., description="source_link atau job_id dari lowongan"),
+    matcher: MatcherService = Depends(get_matcher),
+) -> JobDetailResponse:
+    job = next(
+        (
+            j for j in matcher._jobs
+            if j.get("source_link") == link
+            or j.get("job_id") == link
+            or j.get("id") == link
+        ),
+        None,
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Lowongan tidak ditemukan.")
+    return JobDetailResponse(success=True, data=JobItem(**job))
+
+
+@router.get(
     "/{job_id}",
     response_model=JobDetailResponse,
     summary="Detail Lowongan Pekerjaan",

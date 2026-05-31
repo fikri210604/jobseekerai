@@ -16,7 +16,9 @@ import type {
   AlgorithmConfig,
   AlgorithmType,
   DiagnosticMeta,
+  GeminiAdvisorResponse,
 } from "@/types";
+
 
 // -----------------------------------------------------------
 // 1. User Profile Store
@@ -328,5 +330,39 @@ export const useCareerStore = create<CareerPredictionState>()(
       setError: (error) => set({ error, isLoading: false }),
     }),
     { name: "CareerPredictionStore" }
+  )
+);
+
+// -----------------------------------------------------------
+// 6. Gemini AI Advisor Store
+//    Menyimpan hasil analisis career dari Gemini API
+// -----------------------------------------------------------
+
+interface GeminiAdvisorState {
+  advice: GeminiAdvisorResponse | null;
+  isLoading: boolean;
+  error: string | null;
+  hasAdvice: boolean;
+
+  setAdvice: (advice: GeminiAdvisorResponse) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  clearAdvice: () => void;
+}
+
+export const useGeminiAdvisorStore = create<GeminiAdvisorState>()(
+  devtools(
+    (set) => ({
+      advice: null,
+      isLoading: false,
+      error: null,
+      hasAdvice: false,
+
+      setAdvice: (advice) => set({ advice, hasAdvice: true, error: null, isLoading: false }),
+      setLoading: (loading) => set({ isLoading: loading }),
+      setError: (error) => set({ error, isLoading: false }),
+      clearAdvice: () => set({ advice: null, hasAdvice: false, error: null, isLoading: false }),
+    }),
+    { name: "GeminiAdvisorStore" }
   )
 );

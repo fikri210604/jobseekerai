@@ -20,6 +20,14 @@ export async function PATCH(req: NextRequest, { params }: { params: any }) {
   return handleRequest(req, params);
 }
 
+// Endpoint GET yang boleh di-cache (datanya jarang berubah)
+const CACHEABLE_PATHS = [
+  "health",
+  "api/v1/match/categories",
+  "api/v1/skills/trending",
+  "api/v1/search/stats",
+];
+
 async function handleRequest(req: NextRequest, paramsPromise: any) {
   // Await params to support Next.js 15+ async params, while remaining compatible with older versions
   const params = await paramsPromise;
@@ -36,10 +44,12 @@ async function handleRequest(req: NextRequest, paramsPromise: any) {
   const method = req.method;
 
   // Clone headers and strip client-specific headers that might cause host mismatch
-
   const headers = new Headers();
   req.headers.forEach((val, key) => {
-    if (!["host", "connection", "accept-encoding", "content-length", "origin", "referer"].includes(key.toLowerCase())) {
+    if (![
+      "host", "connection", "accept-encoding",
+      "content-length", "origin", "referer"
+    ].includes(key.toLowerCase())) {
       headers.set(key, val);
     }
   });
@@ -57,12 +67,18 @@ async function handleRequest(req: NextRequest, paramsPromise: any) {
     }
   }
 
+  // Smart caching: cache endpoint GET yang stale selama 5 menit
+  const isCacheable = method === "GET" && CACHEABLE_PATHS.some((p) => pathStr.startsWith(p));
+  const cachePolicy = isCacheable
+    ? { next: { revalidate: 300 } }   // cache 5 menit di Next.js Data Cache
+    : { cache: "no-store" as RequestCache };
+
   try {
     const response = await fetch(targetUrl, {
       method,
       headers,
       body,
-      cache: "no-store",
+      ...cachePolicy,
     });
 
     const responseData = await response.arrayBuffer();
@@ -74,6 +90,11 @@ async function handleRequest(req: NextRequest, paramsPromise: any) {
         resHeaders.set(key, val);
       }
     });
+
+    // Tambahkan cache-control hint untuk browser jika endpoint cacheable
+    if (isCacheable) {
+      resHeaders.set("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+    }
 
     return new NextResponse(responseData, {
       status: response.status,
@@ -88,3 +109,4 @@ async function handleRequest(req: NextRequest, paramsPromise: any) {
     );
   }
 }
+

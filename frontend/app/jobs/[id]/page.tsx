@@ -7,31 +7,22 @@ import { ArrowLeft, ExternalLink, Flag, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSkillGapStore, useUserStore } from "@/lib/store";
-import { analyzeSkillGap, getJobById } from "@/lib/api";
+import { getJobById } from "@/lib/api";
 import { MOCK_JOB } from "@/lib/mock-data";
 import type { JobListing } from "@/types";
 
 import { JobInfoPanel } from "@/components/features/job-detail/JobInfoPanel";
-import { SkillGapPanel } from "@/components/features/job-detail/SkillGapPanel";
+import { GeminiAdvisorCard } from "@/components/features/results/GeminiAdvisorCard";
 
 export default function JobDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id } = use(params);
-  const resolvedSearchParams = use(searchParams);
-  const from = (resolvedSearchParams.from as string) || "search";
-  const score = (resolvedSearchParams.score as string) || "0";
 
   const [job, setJob] = useState<JobListing | null>(null);
   const [isLoadingJob, setIsLoadingJob] = useState(true);
-
-  const { setReport, setLoading, setError } = useSkillGapStore();
-  const { skills } = useUserStore();
 
   useEffect(() => {
     const load = async () => {
@@ -47,26 +38,6 @@ export default function JobDetailPage({
 
     load();
   }, [id]);
-
-  useEffect(() => {
-    if (!job) return;
-
-    const runGap = async () => {
-      setLoading(true);
-      try {
-        const data = await analyzeSkillGap({
-          job_id: job.id,
-          user_skills: skills,
-        });
-        setReport(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Gagal memuat skill gap.");
-        setLoading(false);
-      }
-    };
-
-    runGap();
-  }, [job, skills, setError, setLoading, setReport]);
 
   const displayJob = job ?? MOCK_JOB;
 
@@ -141,7 +112,9 @@ export default function JobDetailPage({
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.85fr)]">
           <JobInfoPanel job={displayJob} />
-          <SkillGapPanel jobId={displayJob.id} from={from} score={score} />
+          <div className="space-y-6">
+            <GeminiAdvisorCard job={displayJob} />
+          </div>
         </div>
       </main>
     </div>

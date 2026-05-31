@@ -60,11 +60,6 @@ export interface CareerPredictRequest {
   parsed_cv: ParsedCV;
 }
 
-// -----------------------------------------------------------
-// Job Listing Types
-// Maps ke response aktual dari matcher_service._format_job_card()
-// -----------------------------------------------------------
-
 /** Detail match score, hadir dalam nested "match_details" pada response backend */
 export interface MatchDetails {
   skill_match_pct: string;      // e.g. "75%"
@@ -269,4 +264,21 @@ export interface RadarDataPoint {
   user_score: number;           // 0 – 100
   required_score: number;       // 0 – 100
   fullMark: number;             // always 100
+}
+
+// -----------------------------------------------------------
+// Gemini AI Advisor Types
+// -----------------------------------------------------------
+
+export interface SkillGapRecommendation {
+  skill: string;
+  priority: "High" | "Medium" | "Low";
+  reason: string;
+  resource: string;
+}
+
+export interface GeminiAdvisorResponse {
+  career_narrative: string;
+  skill_gaps: SkillGapRecommendation[];
+  cover_letter_opening: string;
 }
