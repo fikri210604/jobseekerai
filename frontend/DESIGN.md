@@ -1,6 +1,6 @@
 ## Overview
 
-SkillBridge AI adalah platform berbasis data-dense khusus untuk Talent Analytics, Semantic Search, dan Person-Job Fit Matching berbasis standar nasional SKKNI. Bahasa desain mengadopsi gaya "Modern Minimalist SaaS" dengan landasan kanvas hitam pekat kebiruan `{colors.canvas}` (#02040a) untuk memaksimalkan kontras teks dan grafik analitik tanpa melelahkan mata pengguna.
+JobSeeker AI adalah platform berbasis data-dense khusus untuk Talent Analytics, Semantic Search, dan Person-Job Fit Matching berbasis standar nasional SKKNI. Bahasa desain mengadopsi gaya "Modern Minimalist SaaS" dengan landasan kanvas hitam pekat kebiruan `{colors.canvas}` (#02040a) untuk memaksimalkan kontras teks dan grafik analitik tanpa melelahkan mata pengguna.
 
 Sistem visual menggunakan aturan logika warna fungsional:
 1. {colors.primary} (Indigo - #5e6ad2): Mengendalikan navigasi, tombol aksi utama, dan kontrol parameter sistem.

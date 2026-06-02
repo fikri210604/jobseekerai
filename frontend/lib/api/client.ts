@@ -28,7 +28,7 @@ apiClient.interceptors.response.use(
       (error.response?.data as { detail?: string })?.detail ||
       error.message ||
       "Terjadi kesalahan jaringan";
-    console.error("[SkillBridge API Error]", message);
+    console.error("[JobSeeker API Error]", message);
     return Promise.reject(new Error(message));
   }
 );

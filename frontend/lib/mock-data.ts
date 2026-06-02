@@ -99,7 +99,7 @@ export const MOCK_SEARCH_RESULTS: SearchResult[] = Array.from({ length: 8 }, (_,
 export const MOCK_JOB: JobListing = {
   id: "mock-job-1",
   title: "Staff Data Engineer, Pipeline",
-  company: "SkillBridge Labs",
+  company: "JobSeeker Labs",
   location: "Jakarta / Remote",
   job_type: "Full-time",
   work_arrangement: "Hybrid",

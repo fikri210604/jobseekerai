@@ -41,7 +41,7 @@ export function UserProfilePanel() {
             </div>
             <div className="min-w-0">
               <h3 className="truncate text-base font-bold text-foreground">
-                SkillBridge Candidate
+                JobSeeker Candidate
               </h3>
               <p className="text-sm text-muted-foreground">
                 {education.replace("_", " ").toUpperCase()} / {experienceYears} tahun

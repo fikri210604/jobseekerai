@@ -1,15 +1,4 @@
-# main.py — FastAPI Entry Point untuk SkillBridge AI Backend
-"""
-Jalankan server:
-    uvicorn main:app --reload --port 8000
-
-Akses Swagger UI (OpenAPI):
-    http://localhost:8000/docs
-
-Akses ReDoc:
-    http://localhost:8000/redoc
-"""
-
+# main.py — FastAPI Entry Point untuk JobSeeker AI Backend
 import logging
 import asyncio
 import threading
@@ -19,10 +8,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-from backend.api.v1.api_router import api_router           # Clean Architecture endpoints
-from backend.routes.predictor_router import router as predictor_router  # Legacy (deprecated)
-from backend.routes.retrieval_router import router as retrieval_router  # Legacy (deprecated)
-from backend.routes.web import router as web_router                     # Internal tools
+from backend.api.v1.api_router import api_router           
+from backend.routes.predictor_router import router as predictor_router  
+from backend.routes.retrieval_router import router as retrieval_router  
+from backend.routes.web import router as web_router                   
 
 # ── SlowAPI Rate Limiter ──────────────────────────────────────────────────────
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -77,22 +66,21 @@ async def lifespan(app: FastAPI):
     Server langsung siap menerima request (port bound) tanpa tunggu model selesai load.
     Health check endpoint akan mengembalikan 'warming_up' sampai resource siap.
     """
-    logger.info("🚀 SkillBridge AI Backend sedang starting up...")
+    logger.info("🚀 JobSeeker AI Backend sedang starting up...")
 
-    # Jalankan loading resource di background thread — TIDAK blocking uvicorn bind port
     t = threading.Thread(target=_load_resources_background, daemon=True)
     t.start()
 
     logger.info("🟢 Server siap menerima request. Resource loading berjalan di background...")
 
-    yield  # Server berjalan di sini
+    yield  
 
-    logger.info("⛔ SkillBridge AI Backend shutting down...")
+    logger.info("⛔ JobSeeker AI Backend shutting down...")
 
 
 # ── App Instance ───────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="SkillBridge AI — Backend API",
+    title="JobSeeker AI — Backend API",
     description=(
         "**Career Advisor API** berbasis multi-layer scoring untuk pasar kerja Indonesia.\n\n"
         "### Endpoint Groups\n"
@@ -146,14 +134,13 @@ app.include_router(retrieval_router)
 async def root():
     return {
         "status":  "ok",
-        "message": "SkillBridge AI Backend is running 🚀",
+        "message": "JobSeeker AI Backend is running 🚀",
         "docs":    "http://localhost:8000/docs",
     }
 
 
 @app.get("/health", tags=["Health"], summary="Health Check")
 async def health_check():
-    # _resources_ready adalah module-level variable di file yang sama
     faiss_stats = vector_store.get_index_stats()
     status = "healthy" if _resources_ready else "warming_up"
     return {

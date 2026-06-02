@@ -1,6 +1,6 @@
 # agent/utils/logger.py
 """
-Logger & Pipeline Monitor untuk SkillBridge AI.
+Logger & Pipeline Monitor untuk JobSeeker AI.
 Mencatat setiap tahap pipeline, waktu eksekusi, dan error.
 """
 
@@ -97,7 +97,7 @@ def log_ai_call(model: str, prompt_tokens: int, completion_tokens: int, step: st
 # ── Smoke Test ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("✅ Logger SkillBridge AI berjalan dengan baik")
+    print("✅ Logger JobSeeker AI berjalan dengan baik")
     trace = PipelineTrace("test_pipeline")
 
     @timed_step("dummy_step", trace=trace)

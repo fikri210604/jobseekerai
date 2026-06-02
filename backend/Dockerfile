@@ -1,5 +1,5 @@
 # ============================================================
-# SkillBridge AI — Backend Dockerfile
+# JobSeeker AI — Backend Dockerfile
 # Target: Google Cloud Run
 # ============================================================
 

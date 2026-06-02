@@ -1,5 +1,5 @@
 // ============================================================
-// SkillBridge AI — Global State Store (Zustand)
+// JobSeeker AI — Global State Store (Zustand)
 // Stores: userProfileState | predictionResultState | semanticSearchState
 // ============================================================
 

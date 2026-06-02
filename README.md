@@ -1,4 +1,4 @@
-# SkillBridge AI — Intelligent Career Advisor & Job Matching Platform
+# JobSeeker AI — Intelligent Career Advisor & Job Matching Platform
 
 **Deskripsi:** Sistem AI berbasis multi-layer scoring (Semantic Similarity + ML Prediction + Gemini AI) yang menganalisis profil pengguna, mencocokkan dengan lowongan kerja, dan memberikan saran karir yang dipersonalisasi — dikhususkan untuk pasar kerja Indonesia.
 *(Pengolahan CV dan Rule-Based Expert System dipindahkan ke pengembangan selanjutnya)*  

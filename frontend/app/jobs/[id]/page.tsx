@@ -13,13 +13,19 @@ import type { JobListing } from "@/types";
 
 import { JobInfoPanel } from "@/components/features/job-detail/JobInfoPanel";
 import { GeminiAdvisorCard } from "@/components/features/results/GeminiAdvisorCard";
+import { ScorePanel } from "@/components/features/job-detail/ScorePanel";
 
 export default function JobDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id } = use(params);
+  const searchParamsObj = use(searchParams);
+  const score = typeof searchParamsObj.score === "string" ? searchParamsObj.score : undefined;
+  const from = typeof searchParamsObj.from === "string" ? searchParamsObj.from : undefined;
 
   const [job, setJob] = useState<JobListing | null>(null);
   const [isLoadingJob, setIsLoadingJob] = useState(true);
@@ -40,6 +46,9 @@ export default function JobDetailPage({
   }, [id]);
 
   const displayJob = job ?? MOCK_JOB;
+
+  const isFromSearch = from === "search";
+  const hasScore = !!score;
 
   if (isLoadingJob) {
     return (
@@ -110,10 +119,17 @@ export default function JobDetailPage({
       </div>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.85fr)]">
+        <div
+          className={`grid grid-cols-1 gap-6 ${
+            !isFromSearch || hasScore
+              ? "lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.85fr)]"
+              : ""
+          }`}
+        >
           <JobInfoPanel job={displayJob} />
           <div className="space-y-6">
-            <GeminiAdvisorCard job={displayJob} />
+            {hasScore && <ScorePanel score={score!} from={from!} />}
+            {!isFromSearch && <GeminiAdvisorCard job={displayJob} />}
           </div>
         </div>
       </main>

@@ -1,4 +1,4 @@
-# CLAUDE.md — SkillBridge AI
+# CLAUDE.md — JobSeeker AI
 
 Baca `AGENTS.md` di root project untuk panduan lengkap arsitektur, rules, dan konvensi.
 

@@ -1,5 +1,5 @@
 # ============================================================
-# SkillBridge AI — Frontend Dockerfile
+# JobSeeker AI — Frontend Dockerfile
 # Target: Google Cloud Run
 # Stack : Next.js 16 (App Router) + Node.js 20
 # ============================================================

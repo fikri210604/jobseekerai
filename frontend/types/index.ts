@@ -1,5 +1,5 @@
 // ============================================================
-// SkillBridge AI — TypeScript Type Definitions
+// JobSeeker AI — TypeScript Type Definitions
 // Sinkron dengan respons aktual backend FastAPI
 // ============================================================
 

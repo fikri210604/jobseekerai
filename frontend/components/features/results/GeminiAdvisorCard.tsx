@@ -379,7 +379,7 @@ export function GeminiAdvisorCard({ job }: { job?: JobListing }) {
                     <span className="font-semibold text-foreground">
                       {job ? "1 lowongan spesifik" : `${effectiveResults.length} lowongan`}
                     </span>{" "}
-                    yang dievaluasi oleh pipeline SkillBridge AI
+                    yang dievaluasi oleh pipeline JobSeeker AI
                   </span>
                 </div>
               )}

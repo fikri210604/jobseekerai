@@ -1,4 +1,4 @@
-Create a complete, responsive multi-page web application shell for "SkillBridge AI" utilizing a cohesive dark-themed Minimalist SaaS design system based on #02040a (Canvas background) and #0d1117 (Surface 1 card background). All cards must use 12px corners (rounded-lg) and a 1px subtle border (#1f2430). Use Inter font for text, and JetBrains Mono for numbers/metrics.
+Create a complete, responsive multi-page web application shell for "JobSeeker AI" utilizing a cohesive dark-themed Minimalist SaaS design system based on #02040a (Canvas background) and #0d1117 (Surface 1 card background). All cards must use 12px corners (rounded-lg) and a 1px subtle border (#1f2430). Use Inter font for text, and JetBrains Mono for numbers/metrics.
 
 Generate the following 5 distinct pages/views that users can navigate between:
 

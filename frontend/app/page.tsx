@@ -2,22 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
   Banknote,
   BriefcaseBusiness,
   ChartNoAxesCombined,
+  AlertCircle,
   Flame,
   Globe2,
   Layers3,
-  MapPin,
+  Lightbulb,
   Megaphone,
   Palette,
   Quote,
   Search,
   Settings,
   Sparkles,
+  Target,
   Terminal,
   UserRound,
+  XCircle,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +41,7 @@ import DotGrid from "@/components/ui/DotGrid";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
 
 export const metadata: Metadata = {
-  title: "SkillBridge AI - Bridging Talents to Industry Standards",
+  title: "JobSeeker AI - Bridging Talents to Industry Standards",
   description:
     "Temukan pekerjaan impian dengan pencocokan AI berbasis semantic intelligence untuk pasar kerja Indonesia.",
 };
@@ -57,13 +59,61 @@ const categories = [
   { label: "WFH / Remote", icon: Globe2, tone: "emerald" },
 ];
 
-const urgentRoles = [
-  "Data Analyst",
-  "Digital Marketing",
-  "Customer Service",
-  "Web Developer",
-  "UI/UX Designer",
-  "DevOps Engineer",
+const problems = [
+  {
+    icon: XCircle,
+    title: "Pencocokan Lowongan Tidak Akurat",
+    description:
+      "Platform konvensional mengandalkan kata kunci, sehingga kandidat relevan sering terlewat dan mendapat rekomendasi yang tidak sesuai dengan profil sebenarnya.",
+    accent: "var(--sb-red)",
+    surface: "var(--sb-red-dim)",
+  },
+  {
+    icon: AlertCircle,
+    title: "Tidak Ada Analisis Gap Skill",
+    description:
+      "Pencari kerja tidak mengetahui skill spesifik apa yang perlu ditingkatkan, sehingga arah pengembangan karir menjadi tidak jelas dan tidak terukur.",
+    accent: "var(--sb-amber)",
+    surface: "var(--sb-amber-dim)",
+  },
+  {
+    icon: Target,
+    title: "Panduan Karir yang Terlalu Generik",
+    description:
+      "Saran karir yang tersedia tidak dipersonalisasi. Pencari kerja membutuhkan arahan yang relevan dengan latar belakang pendidikan, skill, dan pengalaman mereka.",
+    accent: "var(--sb-indigo)",
+    surface: "var(--sb-indigo-dim)",
+  },
+];
+
+const solutions = [
+  {
+    icon: Layers3,
+    title: "Semantic Matching berbasis SBERT",
+    description:
+      "Mencocokkan profil dengan lowongan berdasarkan makna kontekstual menggunakan Sentence-BERT multilingual, jauh melampaui pencocokan kata kunci konvensional.",
+    token: "Cosine Similarity",
+    accent: "var(--sb-indigo)",
+    surface: "var(--sb-indigo-dim)",
+  },
+  {
+    icon: ChartNoAxesCombined,
+    title: "Hybrid ML Scoring (3 Model)",
+    description:
+      "Fusion XGBoost, Random Forest, dan Logistic Regression dengan heuristic scoring berbasis 5 faktor (kategori, skill, pengalaman, pendidikan, gaji).",
+    token: "60% Heuristic + 40% ML",
+    accent: "var(--sb-emerald)",
+    surface: "var(--sb-emerald-dim)",
+  },
+  {
+    icon: Sparkles,
+    title: "Gemini AI Career Advisor",
+    description:
+      "Menghasilkan narasi karir, roadmap skill yang diprioritaskan, dan draft cover letter yang dipersonalisasi secara real-time berdasarkan hasil matching AI.",
+    token: "gemini-2.5-flash",
+    accent: "var(--sb-amber)",
+    surface: "var(--sb-amber-dim)",
+  },
 ];
 
 const testimonials = [
@@ -73,7 +123,7 @@ const testimonials = [
     role: "Startup Talent Partner",
   },
   {
-    body: "SkillBridge membantu kami membaca kecocokan kandidat dengan lebih objektif lewat metrik kompetensi yang jelas.",
+    body: "JobSeeker AI membantu kami membaca kecocokan kandidat dengan lebih objektif lewat metrik kompetensi yang jelas.",
     name: "CV Herba Bumi Pertiwi",
     role: "Operation Manager",
   },
@@ -97,8 +147,7 @@ const technologyCards = [
   {
     icon: ChartNoAxesCombined,
     title: "Hybrid ML Scoring",
-    description:
-      "Fusion ML dengan heuristic scoring untuk prediksi akurat.",
+    description: "Fusion ML dengan heuristic scoring untuk prediksi akurat.",
     token: "60% Heuristic + 40% ML",
     accent: "var(--sb-emerald)",
     surface: "var(--sb-emerald-dim)",
@@ -212,9 +261,9 @@ function Marker({
   );
 }
 
-  export default function LandingPage() {
-    return (
-      <div className="relative min-h-screen overflow-hidden">
+export default function LandingPage() {
+  return (
+    <div className="relative min-h-screen overflow-hidden">
       <div className="relative z-10 mx-auto max-w-7xl space-y-24 px-4 py-10 sm:px-6 lg:px-8">
         <section className="px-4 py-16 text-center sm:px-8 lg:py-20">
           <div className="mx-auto max-w-5xl">
@@ -250,38 +299,36 @@ function Marker({
               <SemanticSearchBar />
             </div>
 
-            <div className="mt-12">
-              <p className="font-metric text-xs uppercase text-muted-foreground">
-                Trusted By Industry Leaders
-              </p>
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-4 sm:gap-8">
-                {partners.map((partner) => (
-                  <div
-                    key={partner}
-                    className="rounded-lg border border-[var(--sb-hairline)] bg-[var(--sb-surface-2)] px-4 py-2 text-sm font-semibold text-muted-foreground opacity-70"
-                  >
-                    {partner}
-                  </div>
-                ))}
-              </div>
-            </div>
             <div className="relative mx-auto mt-20 max-w-2xl overflow-hidden rounded-[2rem] border border-[var(--sb-hairline-strong)] bg-gradient-to-b from-[var(--sb-surface-2)] to-[var(--sb-surface-1)] p-10 text-center shadow-[0_10px_40px_-10px_rgba(94,106,210,0.15)]">
               <div className="absolute left-1/2 top-0 h-[1px] w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--sb-indigo)] to-transparent opacity-50"></div>
               <div className="absolute left-1/2 top-0 -translate-x-1/2 h-[50px] w-[50px] rounded-full bg-[var(--sb-indigo)] blur-[50px] opacity-20"></div>
-              
+
               <div className="relative z-10">
-                <Sparkles className="mx-auto mb-4 text-[var(--sb-indigo)]" size={28} strokeWidth={1.5} />
+                <Sparkles
+                  className="mx-auto mb-4 text-[var(--sb-indigo)]"
+                  size={28}
+                  strokeWidth={1.5}
+                />
                 <h2 className="mb-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                   Belum tahu karir apa yang cocok untukmu?
                 </h2>
                 <p className="mx-auto mb-8 max-w-lg text-muted-foreground leading-relaxed">
-                  Cari tahu potensi karir terbaikmu berdasarkan background pendidikan, skill, dan pengalaman menggunakan AI cerdas kami.
+                  Cari tahu potensi karir terbaikmu berdasarkan background
+                  pendidikan, skill, dan pengalaman menggunakan AI cerdas kami.
                 </p>
-                
-                <Button asChild className="group relative h-14 overflow-hidden rounded-full px-8 text-base font-medium shadow-[0_0_20px_-5px_rgba(94,106,210,0.4)] transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_-5px_rgba(94,106,210,0.6)]" style={{ background: "var(--sb-indigo)", color: "#fff" }}>
+
+                <Button
+                  asChild
+                  className="group relative h-14 overflow-hidden rounded-full px-8 text-base font-medium shadow-[0_0_20px_-5px_rgba(94,106,210,0.4)] transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_-5px_rgba(94,106,210,0.6)]"
+                  style={{ background: "var(--sb-indigo)", color: "#fff" }}
+                >
                   <Link href="/predict" className="flex items-center gap-2">
                     <span className="relative z-10 flex items-center gap-2">
-                      Mulai Prediksi <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
+                      Mulai Prediksi{" "}
+                      <ArrowRight
+                        size={18}
+                        className="transition-transform duration-300 group-hover:translate-x-1"
+                      />
                     </span>
                     <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] transition-transform duration-700 group-hover:translate-x-[100%]"></div>
                   </Link>
@@ -317,67 +364,114 @@ function Marker({
           </div>
         </section>
 
-        <section className="grid gap-8 rounded-2xl border border-[var(--sb-hairline-strong)] bg-[var(--sb-surface-1)] p-6 md:grid-cols-[1fr_auto_1fr] md:p-8">
-          <div>
-            <h3 className="text-2xl font-semibold text-foreground">
-              Dibutuhkan segera
-            </h3>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {urgentRoles.map((role, index) => (
-                <span
-                  key={role}
-                  className="inline-flex items-center gap-2 rounded-full border border-[var(--sb-hairline)] bg-[var(--sb-surface-2)] px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-[var(--sb-indigo)] hover:text-foreground"
-                >
-                  {role}
-                  {index === 0 && (
-                    <span className="size-1.5 rounded-full bg-[var(--sb-indigo)] animate-pulse-dot" />
-                  )}
-                </span>
-              ))}
-            </div>
+        {/* ── Latar Belakang Masalah ─────────────────────────────────── */}
+        <section className="space-y-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <Badge variant="secondary" className="mb-3">
+              Latar Belakang
+            </Badge>
+            <h2 className="text-3xl font-semibold text-foreground">
+              Masalah yang dihadapi pencari kerja Indonesia
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Riset lapangan mengidentifikasi tiga hambatan utama yang membuat
+              proses pencarian kerja menjadi tidak efisien dan tidak terarah.
+            </p>
           </div>
-          <Separator
-            orientation="vertical"
-            className="hidden h-full md:block"
-          />
-          <div>
-            <h3 className="text-2xl font-semibold text-foreground">
-              Metrik real-time
-            </h3>
-            <div className="mt-5 grid grid-cols-2 gap-4">
-              <div>
-                <p className="font-metric text-xs uppercase text-muted-foreground">
-                  Total loker
-                </p>
-                <p className="font-metric text-2xl text-[var(--sb-indigo)]">
-                  4,911
-                </p>
-              </div>
-              <div>
-                <p className="font-metric text-xs uppercase text-muted-foreground">
-                  Ter-index AI
-                </p>
-                <p className="font-metric text-2xl text-[var(--sb-emerald)]">
-                  756
-                </p>
-              </div>
-              <div>
-                <p className="font-metric text-xs uppercase text-muted-foreground">
-                  ML Models
-                </p>
-                <p className="font-metric text-2xl text-[var(--sb-amber)]">
-                  3
+          <div className="grid gap-5 md:grid-cols-3">
+            {problems.map((item, i) => (
+              <div
+                key={item.title}
+                className="relative overflow-hidden rounded-2xl border border-[var(--sb-hairline)] bg-[var(--sb-surface-1)] p-6 transition-transform hover:-translate-y-1"
+              >
+                <div
+                  className="absolute inset-x-0 top-0 h-[2px]"
+                  style={{ background: item.accent }}
+                />
+                <div
+                  className="mb-4 flex size-11 items-center justify-center rounded-xl"
+                  style={{ background: item.surface, color: item.accent }}
+                >
+                  <item.icon size={20} />
+                </div>
+                <span
+                  className="font-metric mb-3 block text-[10px] uppercase tracking-widest"
+                  style={{ color: item.accent }}
+                >
+                  Masalah {String(i + 1).padStart(2, "0")}
+                </span>
+                <h3 className="mb-2 text-sm font-bold text-foreground">
+                  {item.title}
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {item.description}
                 </p>
               </div>
-              <div>
-                <p className="font-metric text-xs uppercase text-muted-foreground">
-                  AI Advisor
-                </p>
-                <p className="font-metric text-2xl text-foreground">
-                  Gemini
-                </p>
-              </div>
-            </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Solusi yang Dibangun ───────────────────────────────────── */}
+        <section className="space-y-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <Badge variant="secondary" className="mb-3">
+              Solusi
+            </Badge>
+            <h2 className="text-3xl font-semibold text-foreground">
+              Teknologi yang menjawab setiap masalah
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              JobSeeker AI membangun pipeline AI multi-layer yang menggabungkan
+              semantic search, machine learning, dan generative AI untuk
+              menciptakan pengalaman pencarian kerja yang personal dan akurat.
+            </p>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {solutions.map((card, i) => (
+              <Card
+                key={card.title}
+                className="relative overflow-hidden rounded-2xl border border-[var(--sb-hairline)] bg-[var(--sb-surface-1)] transition-transform hover:-translate-y-1"
+              >
+                <div
+                  className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent"
+                  style={{
+                    background: `linear-gradient(to right, transparent, ${card.accent}, transparent)`,
+                  }}
+                />
+                <CardHeader>
+                  <div className="mb-1 flex items-center justify-between">
+                    <div
+                      className="flex size-12 items-center justify-center rounded-xl"
+                      style={{ background: card.surface, color: card.accent }}
+                    >
+                      <card.icon size={21} />
+                    </div>
+                    <span
+                      className="font-metric text-[10px] uppercase tracking-widest opacity-40"
+                      style={{ color: card.accent }}
+                    >
+                      Solusi {String(i + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <CardTitle className="normal-case tracking-normal">
+                    {card.title}
+                  </CardTitle>
+                  <CardDescription>{card.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <span
+                    className="font-metric rounded-full border px-3 py-1 text-xs"
+                    style={{
+                      color: card.accent,
+                      background: card.surface,
+                      borderColor: `${card.accent}44`,
+                    }}
+                  >
+                    {card.token}
+                  </span>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </section>
 
@@ -391,7 +485,7 @@ function Marker({
             </h2>
             <p className="mt-3 text-sm text-muted-foreground">
               Bergabunglah dengan profesional dan tim rekrutmen yang telah
-              menemukan kecocokan karir melalui SkillBridge AI.
+              menemukan kecocokan karir melalui JobSeeker AI.
             </p>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
@@ -472,40 +566,6 @@ function Marker({
             <JobCategoryChart />
           </div>
         </section>
-
-        <section className="grid gap-5 md:grid-cols-3">
-          {technologyCards.map((card) => (
-            <Card
-              key={card.title}
-              className="rounded-xl border border-[var(--sb-hairline)] bg-[var(--sb-surface-1)]"
-            >
-              <CardHeader>
-                <div
-                  className="mb-4 flex size-12 items-center justify-center rounded-lg"
-                  style={{ background: card.surface, color: card.accent }}
-                >
-                  <card.icon size={21} />
-                </div>
-                <CardTitle className="normal-case tracking-normal">
-                  {card.title}
-                </CardTitle>
-                <CardDescription>{card.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <span
-                  className="font-metric rounded border px-2 py-1 text-xs"
-                  style={{
-                    color: card.accent,
-                    background: card.surface,
-                    borderColor: `${card.accent}44`,
-                  }}
-                >
-                  {card.token}
-                </span>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
       </div>
 
       <footer className="border-t border-[var(--sb-hairline)] bg-[var(--sb-surface-1)] py-10">
@@ -513,7 +573,7 @@ function Marker({
           <div className="flex items-center gap-3">
             <BriefcaseBusiness size={18} color="var(--sb-indigo)" />
             <span className="text-sm font-bold text-foreground">
-              SkillBridge AI
+              JobSeeker AI
             </span>
             <Separator orientation="vertical" className="hidden h-5 md:block" />
             <span className="font-metric text-xs text-muted-foreground">

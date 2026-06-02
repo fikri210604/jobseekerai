@@ -1,4 +1,4 @@
-# 🤖 SkillBridge AI — Backend
+# 🤖 JobSeeker AI — Backend
 
 Backend **FastAPI** untuk platform career advisor berbasis AI multi-layer scoring
 untuk pasar kerja Indonesia.

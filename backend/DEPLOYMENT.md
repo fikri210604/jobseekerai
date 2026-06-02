@@ -1,4 +1,4 @@
-# 🚀 Deploy SkillBridge AI Backend ke Google Cloud Run
+# 🚀 Deploy JobSeeker AI Backend ke Google Cloud Run
 
 ## Overview Arsitektur
 
@@ -90,7 +90,7 @@ Kemudian update `main.py` agar download file dari Cloud Storage saat startup jik
 gcloud artifacts repositories create skillbridge-backend \
   --repository-format=docker \
   --location=asia-southeast2 \
-  --description="SkillBridge AI Backend Docker images"
+  --description="JobSeeker AI Backend Docker images"
 
 # Autentikasi Docker ke Artifact Registry
 gcloud auth configure-docker asia-southeast2-docker.pkg.dev
@@ -184,7 +184,7 @@ def _download_from_gcs_if_needed():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 SkillBridge AI Backend starting up...")
+    logger.info("🚀 JobSeeker AI Backend starting up...")
     _download_from_gcs_if_needed()  # ← tambahkan baris ini di awal lifespan
     # ... sisa kode startup tidak perlu diubah
 ```

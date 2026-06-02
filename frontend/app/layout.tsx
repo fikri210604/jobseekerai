@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "SkillBridge AI — Career Intelligence Platform",
-    template: "%s | SkillBridge AI",
+    default: "JobSeeker AI — Career Intelligence Platform",
+    template: "%s | JobSeeker AI",
   },
   description:
     "Platform career advisor berbasis AI dengan SBERT Semantic Search, XGBoost Re-ranking, dan SKKNI Competency Mapping untuk pasar kerja Indonesia.",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     "talent analytics",
   ],
   openGraph: {
-    title: "SkillBridge AI",
+    title: "JobSeeker AI",
     description: "Bridging Talents to Industry Standards via Semantic Intelligence",
     type: "website",
   },

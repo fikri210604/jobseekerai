@@ -1,6 +1,6 @@
 # agent/models/schemas.py
 """
-Pydantic schemas — type safety untuk semua input/output pipeline SkillBridge AI.
+Pydantic schemas — type safety untuk semua input/output pipeline JobSeeker AI.
 Digunakan oleh FastAPI untuk validasi request/response otomatis.
 """
 

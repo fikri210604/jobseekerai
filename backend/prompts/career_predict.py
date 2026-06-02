@@ -77,7 +77,7 @@ Guidelines:
 
 
 CAREER_SUMMARY_PROMPT = """
-You are SkillBridge AI. Summarize this career analysis into 3 concise bullet points
+You are JobSeeker AI. Summarize this career analysis into 3 concise bullet points
 in {language} that a user can immediately act on. Be specific, not generic.
 
 Career Analysis:

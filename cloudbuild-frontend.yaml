@@ -1,5 +1,5 @@
 # ============================================================
-# Cloud Build Config — SkillBridge AI Frontend
+# Cloud Build Config — JobSeeker AI Frontend
 # Deploy Next.js ke Google Cloud Run
 # Jalankan: gcloud builds submit --config cloudbuild-frontend.yaml .
 # ============================================================

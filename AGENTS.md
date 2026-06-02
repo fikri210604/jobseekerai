@@ -1,4 +1,4 @@
-# AGENTS.md — SkillBridge AI
+# AGENTS.md — JobSeeker AI
 
 > File ini ditujukan untuk AI coding agents agar dapat memahami dan bekerja dengan codebase ini secara optimal.
 > **Sumber kebenaran arsitektur ada di `README.md`** — baca README sebelum membuat perubahan besar.
@@ -7,7 +7,7 @@
 
 ## 🏗️ Project Overview
 
-SkillBridge AI adalah platform career advisor berbasis AI multi-layer scoring untuk pasar kerja Indonesia.
+JobSeeker AI adalah platform career advisor berbasis AI multi-layer scoring untuk pasar kerja Indonesia.
 Stack: **Python 3.11+ (backend)** + **Next.js 16 (frontend)** + **Supabase (database)**.
 
 ---

@@ -44,10 +44,10 @@ function Brand() {
   return (
     <Link href="/" className="group flex min-w-0 items-center gap-2.5">
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden">
-        <Image src="/logo.png" alt="SkillBridge AI Logo" width={32} height={32} className="object-cover" />
+        <Image src="/logo.png" alt="JobSeeker AI Logo" width={32} height={32} className="object-cover" />
       </div>
       <span className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-base">
-        SkillBridge<span className="text-[var(--sb-indigo)]"> AI</span>
+        JobSeeker<span className="text-[var(--sb-indigo)]"> AI</span>
       </span>
     </Link>
   );
@@ -171,7 +171,7 @@ export default function Navbar() {
                 Navigasi
               </SheetTitle>
               <SheetDescription>
-                Akses halaman utama SkillBridge AI dari satu panel.
+                Akses halaman utama JobSeeker AI dari satu panel.
               </SheetDescription>
             </SheetHeader>
 

@@ -2,7 +2,7 @@
 """
 Gemini AI Career Advisor Service.
 Bertanggung jawab menghasilkan narasi karir, roadmap skill, dan draft cover letter
-berdasarkan hasil job matching dari pipeline SkillBridge AI.
+berdasarkan hasil job matching dari pipeline JobSeeker AI.
 
 Sesuai aturan AGENTS.md:
 - Service mengembalikan dict/Pydantic model, BUKAN HTTP response.

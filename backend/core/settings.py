@@ -1,6 +1,6 @@
 # backend/core/settings.py
 """
-Konfigurasi global SkillBridge AI menggunakan Pydantic BaseSettings.
+Konfigurasi global JobSeeker AI menggunakan Pydantic BaseSettings.
 Validasi tipe otomatis saat startup.
 """
 

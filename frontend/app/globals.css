@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-   SkillBridge AI — Design System CSS Variables
+   JobSeeker AI — Design System CSS Variables
    Modern Minimalist SaaS · Canvas #02040a · Indigo + Emerald
    ============================================================ */
 
@@ -181,7 +181,7 @@
 }
 
 /* ============================================================
-   Utility Classes (SkillBridge tokens)
+   Utility Classes (JobSeeker tokens)
    ============================================================ */
 
 @layer utilities {
