@@ -9,11 +9,15 @@
 
 ## Latar Belakang
 
-Pasar kerja Indonesia terus berkembang dengan cepat seiring dengan transformasi digital yang masif di berbagai sektor industri. Di satu sisi, terdapat jutaan pencari kerja yang kesulitan menemukan lowongan yang sesuai dengan kompetensi dan latar belakang mereka. Di sisi lain, perusahaan menghadapi tantangan dalam menemukan kandidat yang benar-benar *qualified* di antara ribuan pelamar.
+Pasar kerja Indonesia tengah menghadapi tantangan struktural yang kompleks di tengah akselerasi transformasi digital. Berdasarkan data Badan Pusat Statistik (BPS) tahun 2024, tingkat pengangguran terbuka di Indonesia masih berada di kisaran 4,8%, dengan jumlah angkatan kerja yang terus meningkat setiap tahunnya. Di sisi lain, laporan *LinkedIn Emerging Jobs Indonesia 2023* mencatat pertumbuhan signifikan permintaan tenaga kerja di bidang teknologi, data, dan digital marketing — namun terdapat kesenjangan (*mismatch*) yang nyata antara kompetensi pencari kerja dengan kebutuhan industri.
 
-Platform pencari kerja konvensional umumnya mengandalkan pencarian berbasis kata kunci yang tidak mampu memahami konteks dan semantik dari profil pengguna maupun deskripsi pekerjaan. Akibatnya, kandidat yang relevan kerap tidak terdeteksi, dan pencari kerja mendapatkan rekomendasi yang tidak akurat.
+Fenomena *skill mismatch* ini diperparah oleh keterbatasan platform pencari kerja konvensional yang ada saat ini. Platform seperti Jobstreet, Glints, atau LinkedIn umumnya mengandalkan mekanisme pencarian berbasis kata kunci (*keyword-based search*). Pendekatan ini secara inheren memiliki kelemahan mendasar: ia tidak mampu memahami **konteks semantik** dari profil pengguna maupun deskripsi pekerjaan. Akibatnya, seorang *software engineer* yang mahir dalam "pengembangan aplikasi web" bisa luput dari rekomendasi lowongan yang mencari "full-stack developer", meskipun keduanya secara kompetensi saling bersesuaian.
 
-**JobSeeker AI** hadir sebagai solusi berbasis kecerdasan buatan yang mengintegrasikan *semantic understanding*, *machine learning*, dan *generative AI* untuk memberikan rekomendasi pekerjaan yang personal, akurat, dan kontekstual — khususnya untuk pasar kerja Indonesia.
+Lebih jauh, platform konvensional umumnya tidak menyediakan umpan balik (*feedback*) yang actionable bagi pencari kerja — seperti identifikasi *skill gap* spesifik terhadap suatu posisi, saran roadmap pengembangan diri, atau narasi karir yang dipersonalisasi. Pencari kerja hanya menerima daftar lowongan tanpa panduan konkret mengenai langkah yang perlu diambil untuk meningkatkan kelayakan (*employability*) mereka.
+
+Perkembangan pesat di bidang *Natural Language Processing* (NLP) dan *Generative AI* membuka peluang baru untuk mengatasi keterbatasan tersebut. Model *Sentence-BERT* (SBERT) memungkinkan representasi teks dalam ruang vektor berdimensi tinggi sehingga kemiripan semantik antar dokumen dapat dihitung secara efisien. Sementara itu, *Large Language Models* (LLM) seperti Google Gemini mampu menghasilkan analisis dan narasi yang kontekstual, personal, dan informatif.
+
+**JobSeeker AI** dibangun sebagai respons atas kebutuhan tersebut — sebuah platform *intelligent career advisor* berbasis AI yang mengintegrasikan **semantic search** (SBERT) dan **machine learning hybrid scoring** (Logistic Regression / Random Forest / XGBoost) untuk menghasilkan rekomendasi pekerjaan yang akurat dan transparan, serta memanfaatkan **Google Gemini 2.5 Flash** secara khusus sebagai *career advisor* — untuk menghasilkan narasi karir, analisis *skill gap*, dan saran pengembangan diri yang dipersonalisasi bagi setiap pengguna. Platform ini dirancang khusus untuk pasar kerja Indonesia dengan dukungan pemrosesan teks dwibahasa (Indonesia & Inggris).
 
 ---
 
@@ -181,6 +185,56 @@ Pipeline ini menerima profil pengguna dan menghasilkan daftar lowongan paling re
 Output Akhir: MatchResponse (top-K recommendations + score breakdown + AI advice)
 ```
 
+#### Penjelasan Tahapan Pipeline 1
+
+**Layer 1 — Heuristic Scoring (Bobot: 0.60)**
+
+Layer ini menghitung skor kecocokan awal (*baseline score*) berdasarkan aturan domain yang telah ditentukan (*rule-based scoring*). Setiap pasangan user-job dievaluasi menggunakan lima komponen dengan bobot berbeda:
+
+| Komponen | Bobot | Cara Kerja |
+|---|---|---|
+| **Category Match** | 35% | Kecocokan kategori industri preferensi user dengan kategori pekerjaan. Bersifat biner (0 atau 1). |
+| **Skill Overlap** | 40% | Proporsi *hard skills* yang dimiliki user terhadap yang dibutuhkan job. Dihitung sebagai `|user_skills ∩ job_skills| / |job_skills|`. |
+| **Experience** | 15% | Kesesuaian tahun pengalaman user terhadap kebutuhan job. Bernilai eksponensial: `exp(-|gap|/3)`, semakin kecil gap semakin tinggi skor. |
+| **Education** | 5% | Kecukupan jenjang pendidikan user terhadap kebutuhan job. Bernilai 1 jika pendidikan user ≥ kebutuhan, 0.5 jika selisih 1 level, 0 jika selisih >1 level. |
+| **Salary** | 5% | Kesesuaian ekspektasi gaji user terhadap rentang gaji yang ditawarkan. Dihitung via rasio gaji yang di-*clip* ke rentang [0,1]. |
+
+Skor heuristik akhir merupakan rata-rata tertimbang dari kelima komponen di atas, menghasilkan nilai antara 0 hingga 1.
+
+**Layer 2 — ML Prediction (Bobot: 0.40)**
+
+Layer ini menggunakan model *machine learning* yang telah dilatih sebelumnya untuk memprediksi probabilitas kecocokan user-job. Model dilatih di `modelling.ipynb` menggunakan **pairwise dataset** (~53.726 pasangan user-job) dengan fitur-fitur tabular seperti `skill_coverage`, `category_match`, `exp_gap_normalized`, `salary_ratio`, dan lainnya (lihat bagian Modeling untuk detail).
+
+Tiga model disediakan dan dipilih secara konfigurasi:
+
+| Model | Akurasi Test | Karakteristik |
+|---|---|---|
+| **Logistic Regression** (default) | ~67% | Interpretable, cepat, baseline stabil |
+| **Random Forest** | ~70% | Lebih akurat, menangkap interaksi non-linear |
+| **XGBoost** | ~71% | Paling akurat namun rawan overfit pada dataset kecil |
+
+Model mengembalikan probabilitas kelas positif (*match*) sebagai *ML Score*.
+
+**Fusion Score**
+
+Skor akhir merupakan kombinasi linear dari kedua layer:
+
+```
+Fusion Score = (0.60 × Heuristic Score) + (0.40 × ML Score)
+```
+
+Pendekatan hibrid ini menggabungkan keunggulan *rule-based* (stabil, dapat dijelaskan) dan *machine learning* (adaptif, menangkap pola kompleks). Jika model ML gagal dimuat (misal file `.pkl` corrupt), sistem akan *fallback* ke pure heuristic scoring tanpa error.
+
+**Layer 3 — Gemini AI Career Advisor**
+
+Layer ini bersifat opsional dan dipanggil secara terpisah via endpoint `/api/v1/advisor/career`. Setelah pengguna menerima daftar rekomendasi pekerjaan, Gemini AI menghasilkan tiga output naratif:
+
+1. **Career Narrative** — Ringkasan profil pengguna dan potensi karir berdasarkan hasil matching.
+2. **Skill Roadmap** — Rekomendasi skill yang perlu dipelajari atau ditingkatkan untuk posisi target, diurutkan berdasarkan prioritas.
+3. **Cover Letter Opening** — Pembuka surat lamaran yang dipersonalisasi untuk lowongan teratas.
+
+Layer ini menggunakan **Google Gemini 2.5 Flash** melalui `gemini_service.py` dan prompt templates di `backend/prompts/`.
+
 ### Pipeline 2 — Semantic Retrieval Search
 
 Pipeline ini memungkinkan pencarian lowongan berbasis makna (bukan kata kunci), cocok digunakan untuk eksplorasi bebas.
@@ -220,7 +274,124 @@ Pipeline ini memungkinkan pencarian lowongan berbasis makna (bukan kata kunci), 
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+#### Penjelasan Tahapan Pipeline 2
+
+**Input — Query Teks Bebas**
+
+Pengguna memasukkan teks natural language dalam Bahasa Indonesia, Inggris, atau campuran keduanya. Contoh: *"data engineer yang bisa Python dan SQL"* atau *"marketing digital jakarta remote"*. Tidak ada format khusus atau kata kunci tertentu yang diharuskan.
+
+**Step 1 — Text Encoding (SBERT)**
+
+Query teks diubah menjadi representasi vektor (*dense vector*) berdimensi 384 menggunakan model **SBERT `paraphrase-multilingual-MiniLM-L12-v2`** melalui `backend/models/embedder.py`. Model ini mendukung multilingual (Indonesia & Inggris) dalam satu ruang vektor yang sama, sehingga pencarian tetap akurat meskipun query menggunakan bahasa campuran.
+
+Proses encoding berlangsung *on-the-fly* setiap kali request masuk — tidak ada pre-computed index untuk query.
+
+**Step 2 — Cosine Similarity Search (NumPy)**
+
+Vektor query dibandingkan dengan seluruh vektor pekerjaan yang telah di-*pre-compute* dan disimpan di `sbert_embeddings.npy` (1.491 embedding). Perbandingan dilakukan dengan **cosine similarity** menggunakan NumPy:
+
+```
+similarity = dot(query_vec, job_vec) / (||query_vec|| × ||job_vec||)
+```
+
+Hasilnya difilter berdasarkan threshold minimum (default: 0.3) untuk menghilangkan hasil dengan relevansi rendah, kemudian diurutkan menurun berdasarkan skor similarity.
+
+**Output — SearchResponse**
+
+Daftar lowongan dikembalikan dalam bentuk JSON yang mencakup: judul, perusahaan, lokasi, skills, dan skor similarity. Hasil diurutkan dari yang paling relevan secara semantik.
+
 > **Catatan Teknis:** Implementasi awal menggunakan FAISS, namun diganti dengan NumPy cosine similarity karena FAISS memiliki *dependency binary issue* pada Google Cloud Run. Performa untuk dataset ~1.491 jobs tetap optimal dengan pendekatan NumPy.
+
+---
+
+## Modeling — ML Training Pipeline
+
+Proses training model ML dilakukan di `backend/models/modelling.ipynb`. Berikut langkah-langkahnya:
+
+### 1. Synthetic User Generation
+
+Dibuat **200 profil user sintetis** yang merepresentasikan pasar kerja Indonesia:
+- **10 curated personas** — andi (junior backend), budi (senior frontend), cici (fresh grad data analyst), dll.
+- **190 generated** — acak dari 7 kategori industri dengan distribusi pendidikan & gaji realistik.
+
+```python
+EDU_RANK = {"SMA": 1, "SMK": 1, "D3": 2, "S1": 3, "S2": 4, "S3": 5, "Unknown": 1}
+```
+
+### 2. Pairwise Dataset Creation
+
+Setiap user dipasangkan dengan setiap job dari `refined_jobs.json` (~1.491 jobs) → **~53.726 pasangan**.
+
+Setiap pasangan dihitung fitur tabular:
+
+| Fitur | Skala | Sumber |
+|---|---|---|
+| `skill_coverage` | 0–1 | overlap hard_skills user ∩ job |
+| `soft_skill_coverage` | 0–1 | overlap soft_skills user ∩ job |
+| `category_match` | 0/1 | binary cocok kategori |
+| `exp_gap_raw` | unbounded | selisih pengalaman |
+| `exp_gap_normalized` | -1 – 1 | exp_gap / 5.0, diclamp |
+| `salary_ratio` | 0–~2 | preferred / avg_job_salary |
+| `salary_feasible` | 0/1 | preferred ≤ salary_max |
+| `edu_gap` | -5 – 5 | rank job_edu − rank user_edu |
+| `edu_sufficient` | 0/1 | edu_gap ≤ 0 |
+| `is_remote` | 0/1 | job work_arrangement |
+| `is_junior` | 0/1 | job seniority_level |
+| `certifications_count` | 0–1 | dinormalisasi (/5) |
+| `n_user_skills` | 0–8+ | jumlah hard_skills user |
+
+Target `is_match` di-generate secara **probabilistic** menggunakan Bernoulli sampling dengan 4 level probabilitas, plus hard-negative filtering.
+
+### 3. Class Balancing
+
+Down-sampling kelas negatif dengan prioritas menyimpan **hard negatives** (category_match=1 & skill_coverage≥0.2 tapi tidak cocok). Rasio akhir: ~1.2× positif vs negatif.
+
+### 4. Train / Val / Test Split
+
+| Split | Proporsi | Jumlah (~) |
+|---|---|---|
+| **Train** | 70% | 37.600 |
+| **Validation** | 15% | 8.050 |
+| **Test** | 15% | 8.050 |
+
+Split menggunakan **stratify** berdasarkan `is_match` untuk menjaga distribusi label.
+
+### 5. Feature Scaling
+
+Hanya **Logistic Regression** yang menggunakan `StandardScaler` — tree-based models (RF, XGBoost) tidak memerlukan scaling karena berbasis decision tree.
+
+### 6. Model Training & Hyperparameter Tuning
+
+3 model dilatih dengan **5-Fold GridSearchCV**:
+
+| Model | Parameter Tuned | Best CV Accuracy |
+|---|---|---|
+| **Logistic Regression** | `C: [0.01, 0.1, 1.0, 10.0]` | ~66.2% |
+| **Random Forest** | `max_depth, min_samples_split, min_samples_leaf` | ~69.5% |
+| **XGBoost** | `max_depth, learning_rate, subsample, colsample_bytree` | ~69.7% |
+
+Semua model menggunakan `class_weight='balanced'` (LR & RF) untuk menangani imbalance.
+
+### 7. Model Serialization
+
+Model terbaik disimpan di `backend/models/` sebagai `.pkl` via `joblib`:
+
+```text
+backend/models/
+├── logistic_regression.pkl   ← Default aktif (baseline sederhana)
+├── random_forest.pkl         ← Alternatif presentasi
+└── xgboost.pkl               ← Eksperimen (cenderung overfit)
+```
+
+### 8. Integrasi ke API
+
+Model dimuat oleh `matcher_service.py` saat startup (`load_resources()` → `_load_model()`) dan digunakan dalam hybrid scoring:
+
+```
+Final Score = 0.40 × ML_Score + 0.60 × Heuristic_Score
+```
+
+Jika model gagal load, sistem fallback ke pure heuristic scoring tanpa error.
 
 ---
 
@@ -236,42 +407,96 @@ Data lowongan kerja dikumpulkan menggunakan **SerpApi** — sebuah layanan scrap
 
 ### Statistik Dataset
 
-| Tahap | File | Jumlah Records | Ukuran |
-|---|---|---|---|
-| **Raw** | `data/raw/google_jobs_results.json` | ~4.911 lowongan | ~18 MB |
-| **Cleaned** (setelah ETL AI) | `data/cleaned/cleaned_jobs.json` | ~4.100 lowongan valid | — |
-| **Refined** (siap indexing) | `data/cleaned/refined_jobs.json` | ~1.491 lowongan ter-proses penuh | — |
-| **Embedded** | `data/retrieval/sbert_embeddings.npy` | 1.491 embedding vectors | — |
+| Tahap | File | Jumlah Records | Atribut | Ukuran |
+|---|---|---|---|---|
+| **Raw** (SerpApi) | `data/raw/google_jobs_results.json` | **4.911** | 12 (mentah) | ~18 MB |
+| **Cleaned** (setelah AI Extraction) | `data/cleaned/cleaned_jobs.json` | **1.617** | 28 (terstruktur) | — |
+| **Refined** (setelah Refinement) | `data/cleaned/refined_jobs.json` | **1.491** | 29 | — |
+| **Vector/Modeling** | `data/vector/job_mapping.json` | **1.322** | 16 | — |
+| **Embedded** | `data/retrieval/sbert_embeddings.npy` | 1.491 embedding vectors | — | — |
 
-> **Mengapa hanya 1.491 dari 4.911?**  
-> Proses ETL menggunakan Ollama/Gemma 2B secara lokal (CPU). Dari 4.911 raw jobs, ~1.617 lolos cleaning dan ~1.491 lolos refinement. Sisanya difilter karena diklasifikasikan sebagai bukan lowongan valid (`is_valid_job = false`), duplikat, atau data tidak lengkap.
+> **Mengapa hanya 1.322 dari 4.911?**  
+> Proses Feature Extraction melalui tiga tahap: (1) **AI Extraction** menggunakan Ollama/Gemma 2B — dari 4.911 raw jobs, hanya ~1.617 yang lolos validasi sebagai lowongan valid (`is_valid_job = true`) dan berhasil diekstrak atributnya; (2) **Refinement** berbasis Python — menyisakan ~1.491 setelah normalisasi gaji, deduplikasi skill, dan perbaikan tipe pekerjaan; (3) **Final Filter** untuk modeling — menghasilkan 1.322 data dengan seluruh fitur terisi lengkap. Sisanya difilter karena merupakan duplikat, data tidak lengkap, atau bukan lowongan valid.
 
-### Proses ETL (Data Ingestion & Extraction)
+### Proses Feature Extraction (Data Pipeline)
 
-Pipeline ETL dijalankan offline via Jupyter Notebook (`backend/services/etl_learning.ipynb`) menggunakan **Ollama/Gemma 2B** sebagai LLM lokal.
+Pipeline ekstraksi fitur dijalankan offline via `backend/services/etl_learning.ipynb` dan terdiri dari **dua tahap utama**:
+
+#### Tahap 1: AI Extraction — Ollama/Gemma 2B (LLM Lokal)
+
+ Pada tahap ini, **Large Language Model (LLM) lokal Ollama/Gemma 2B** digunakan untuk mengekstrak atribut terstruktur dari deskripsi lowongan mentah. Dari **12 atribut mentah** (title, description, extensions, detected_extensions, dll.), LLM mengekstrak menjadi **28 atribut terstruktur**.
+
+**Apa yang diekstrak LLM:**
+
+| Atribut Hasil Ekstraksi | Contoh |
+|---|---|
+| `hard_skills` | `["Python", "SQL", "PostgreSQL"]` |
+| `soft_skills` | `["komunikasi", "teliti", "kerja sama"]` |
+| `education_level` | `"S1"`, `"D3"`, `"SMA"` |
+| `min_experience_years` | `2` |
+| `salary_min` / `salary_max` | `5000000` / `8000000` |
+| `job_category` | `"Technology"`, `"Marketing & Sales"` |
+| `job_subcategory` | `"Data Analyst"`, `"Sales Executive"` |
+| `seniority_level` | `"Entry"`, `"Junior"`, `"Mid"`, `"Senior"` |
+| `work_arrangement` | `"Onsite"`, `"Remote"`, `"Hybrid"` |
+| `employment_type` | `"Full-time"`, `"Part-time"`, `"Contract"` |
+
+**Filter validasi juga dilakukan oleh LLM** — job yang bukan lowongan valid (spam, iklan, bukan pekerjaan) diklasifikasikan sebagai `is_valid_job = false` dan difilter.
 
 ```
-┌─────────────────┐    ┌──────────────────────────────┐    ┌──────────────────────────┐
-│ data/raw/       │    │ ETL Stage 1: AI Extraction   │    │ data/cleaned/            │
-│ google_jobs_    │───▶│ (Ollama/Gemma 2B)            │───▶│ cleaned_jobs.json        │
-│ results.json    │    │ - is_potential_job() filter  │    │ (incremental, resumable) │
-│ (~4.911 jobs)   │    │ - build_prompt() one-shot    │    └─────────────┬────────────┘
-└─────────────────┘    │ - process_with_ai() async    │                  │
-                       └──────────────────────────────┘                  ▼
-                       ┌──────────────────────────────┐    ┌──────────────────────────┐
-                       │ ETL Stage 2: Refinement      │    │ data/refined/            │
-                       │ (Pure Python — tanpa AI)     │───▶│ refined_jobs.json        │
-                       │ - Salary normalization       │    │ (siap untuk indexing)    │
-                       │ - Skills deduplication       │    └─────────────┬────────────┘
-                       │ - Employment type fix        │                  │
-                       └──────────────────────────────┘                  ▼
-                                                           ┌──────────────────────────┐
-                                                           │ data/retrieval/          │
-                                                           │ sbert_embeddings.npy     │
-                                                            │ (1.491 jobs ter-embed)    │
-                                                           └──────────────────────────┘
+┌──────────────────────┐     ┌──────────────────────────────────────────┐     ┌──────────────────────────┐
+│  Raw Google Jobs     │     │  STAGE 1: AI EXTRACTION                  │     │  cleaned_jobs.json       │
+│  (4.911 data)        │────▶│  ┌────────────────────────────────────┐  │────▶│  (1.617 data)            │
+│                      │     │  │  Ollama/Gemma 2B (LLM Lokal)       │  │     │  28 atribut terstruktur  │
+│  12 atribut mentah:  │     │  │                                    │  │     └────────────┬───────────┘
+│  • title             │     │  │  Prompt → Deskripsi job mentah     │  │                  │
+│  • description       │     │  │         ↓                          │  │                  │
+│  • extensions        │     │  │         hard_skills: [...],        │  │                  │
+│  • detected_extensions│     │  │         soft_skills: [...],        │  │                  │
+│  • company_name      │     │  │         salary_min: ...,           │  │                  │
+│  • location          │     │  │         education_level: ...,      │  │                  │
+│  • via               │     │  │         job_category: ...,         │  │                  │
+│  • source_link       │     │  │         seniority_level: ...,      │  │                  │
+│  • share_link        │     │  │         work_arrangement: ...,     │  │                  │
+│  • job_title         │     │  │         ...                        │  │                  │
+│  • apply_options     │     │  └────────────────────────────────────┘  │                  │
+│  • job_id            │     │  Filter: is_valid_job = true/false      │                  │
+└──────────────────────┘     └──────────────────────────────────────────┘                  ▼
+                         ┌──────────────────────────────────────────┐     ┌──────────────────────────┐
+                         │  STAGE 2: REFINEMENT (Python)            │     │  refined_jobs.json       │
+                         │  ┌────────────────────────────────────┐  │────▶│  (1.491 data)            │
+                         │  │ • Normalisasi gaji (harian→bulanan)│  │     │  29 atribut              │
+                         │  │ • Deduplikasi & normalisasi skill  │  │     └────────────┬───────────┘
+                         │  │ • Perbaikan employment_type        │  │                  │
+                         │  │ • Filter soft_skills > 3 item      │  │                  │
+                         │  │ • Validasi salary range            │  │                  │
+                         │  └────────────────────────────────────┘  │                  │
+                         └──────────────────────────────────────────┘                  ▼
+                                                                     ┌──────────────────────────┐
+                                                                     │  job_mapping.json        │
+                                                                     │  (1.322 data)            │
+                                                                     │  16 atribut final        │
+                                                                     │  (untuk modeling/index)  │
+                                                                     └──────────────────────────┘
 ```
 
+#### Tahap 2: Refinement (Pure Python — Tanpa AI)
+
+Tahap ini menggunakan logika Python murni untuk membersihkan dan menormalisasi hasil ekstraksi LLM:
+
+| Proses | Detail |
+|---|---|
+| **Normalisasi Gaji** | Konversi gaji harian (×22), mingguan (×4), per jam (×160) ke IDR/bulan. Jika tidak terdeteksi, diisi `0`. |
+| **Normalisasi Skill** | Via `skill_normalizer.py` — 100+ alias mapping (`"js"` → `"JavaScript"`, `"excel"` → `"Microsoft Excel"`) |
+| **Deduplikasi Skill** | Menghapus duplikat dalam satu list skill |
+| **Filter Soft Skills** | Maksimal 3 item (LLM kadang menghasilkan >3 meski diminta `max3`) |
+| **Validasi Lowongan** | Filter `is_valid_job = false`, duplikat via `job_id`, dan data tidak lengkap |
+
+#### Output Akhir untuk Modeling
+
+Data akhir `job_mapping.json` (1.322 data, 16 atribut) digunakan untuk:
+- **ML Modeling** (`modelling.ipynb`) — pairwise feature engineering & training
+- **Semantic Indexing** (`data_indexing.ipynb`) — SBERT embedding & FAISS/NumPy index
 ### Schema Data Output (`refined_jobs.json`)
 
 | Field | Tipe | Keterangan |
