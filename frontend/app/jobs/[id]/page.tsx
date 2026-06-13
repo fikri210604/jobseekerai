@@ -3,14 +3,12 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, Flag, Share2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getJobById } from "@/lib/api";
 import { MOCK_JOB } from "@/lib/mock-data";
 import type { JobListing } from "@/types";
-
 import { JobInfoPanel } from "@/components/features/job-detail/JobInfoPanel";
 import { GeminiAdvisorCard } from "@/components/features/results/GeminiAdvisorCard";
 import { ScorePanel } from "@/components/features/job-detail/ScorePanel";

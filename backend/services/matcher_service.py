@@ -26,8 +26,6 @@ logger = logging.getLogger(__name__)
 
 _ROOT_DIR = Path(__file__).resolve().parent.parent
 
-# Batas wajar gaji di Indonesia: Rp 100 juta/bulan.
-# Nilai di atas ini dianggap anomali dari scraping dan direset ke 0.
 _MAX_REASONABLE_SALARY = 100_000_000
 
 EDU_RANK: dict[str, int] = {
@@ -35,8 +33,6 @@ EDU_RANK: dict[str, int] = {
     "D3": 3, "S1": 4, "S2": 5, "S3": 6, "Unknown": 2,
 }
 
-# Bobot heuristic scoring (total harus = 1.0)
-# category & skill diprioritaskan, salary dikecilkan karena data sering kosong.
 _HEURISTIC_WEIGHTS: dict[str, float] = {
     "category": 0.35,
     "skill":    0.40,
@@ -45,16 +41,10 @@ _HEURISTIC_WEIGHTS: dict[str, float] = {
     "salary":   0.05,
 }
 
-# Bobot hybrid: ML score vs Heuristic score
 _HYBRID_WEIGHTS: dict[str, float] = {
     "ml":        0.40,
     "heuristic": 0.60,
 }
-
-
-# ==============================================================================
-# MatcherService — Class Utama
-# ==============================================================================
 
 class MatcherService:
     """
@@ -68,19 +58,13 @@ class MatcherService:
 
     # ── Default Paths (override via constructor jika perlu) ───────────────────
     DEFAULT_DATA_PATH:  ClassVar[Path] = _ROOT_DIR / "data" / "cleaned" / "refined_jobs.json"
-    DEFAULT_MODEL_PATH: ClassVar[Path] = _ROOT_DIR / "models" / "logistic_regression.pkl"
+    DEFAULT_MODEL_PATH: ClassVar[Path] = _ROOT_DIR / "models" / "xgboost.pkl"
 
     def __init__(
         self,
         data_path:  Path | str | None = None,
         model_path: Path | str | None = None,
     ) -> None:
-        """
-        Args:
-            data_path:  Path ke refined_jobs.json. Default: DEFAULT_DATA_PATH.
-            model_path: Path ke model ML (.pkl). Default: DEFAULT_MODEL_PATH.
-                        Set ke None untuk menonaktifkan ML layer (pure heuristic).
-        """
         self.data_path:  Path          = Path(data_path)  if data_path  else self.DEFAULT_DATA_PATH
         self.model_path: Path          = Path(model_path) if model_path else self.DEFAULT_MODEL_PATH
         self._jobs:      list[dict]    = []
@@ -91,13 +75,6 @@ class MatcherService:
     # ──────────────────────────────────────────────────────────────────────────
 
     def load_resources(self) -> dict:
-        """
-        Muat data lowongan & model ML dari disk ke memori.
-        Dipanggil sekali saat FastAPI startup via lifespan event.
-
-        Returns:
-            dict: { jobs_loaded: int, model_loaded: bool }
-        """
         self._load_jobs()
         self._load_model()
         return {
@@ -106,7 +83,6 @@ class MatcherService:
         }
 
     def _load_jobs(self) -> None:
-        """Muat data lowongan dari refined_jobs.json ke memori."""
         if not self.data_path.exists():
             logger.error(f"refined_jobs.json tidak ditemukan di: {self.data_path}")
             return
@@ -117,11 +93,9 @@ class MatcherService:
         logger.info(f"✅ Berhasil memuat {len(self._jobs):,} lowongan dari refined_jobs.json")
 
     def _load_model(self) -> None:
-        """Muat model ML (.pkl) dari disk. Fallback ke heuristic jika gagal."""
         if not self.model_path.exists():
             logger.warning("Model .pkl tidak ditemukan. Menggunakan heuristic scoring.")
             return
-
         try:
             self._ml_model = joblib.load(self.model_path)
             logger.info("✅ Model ML berhasil dimuat.")
@@ -134,10 +108,6 @@ class MatcherService:
     # ──────────────────────────────────────────────────────────────────────────
 
     def get_available_categories(self) -> list[str]:
-        """
-        Kembalikan daftar unik job_category yang ada di dataset.
-        Berguna untuk eksplorasi dan validasi input preferred_category.
-        """
         return sorted(
             {j.get("job_category") for j in self._jobs if j.get("job_category")}
         )
@@ -147,12 +117,6 @@ class MatcherService:
     # ──────────────────────────────────────────────────────────────────────────
 
     def _calculate_features(self, user: dict, job: dict) -> tuple[float, dict]:
-        """
-        Hitung fitur numerik kompatibilitas antara satu user dan satu lowongan.
-
-        Returns:
-            (heuristic_score: float, features: dict)
-        """
         skill_coverage, soft_coverage, skill_overlap, matched_skills = self._score_skills(user, job)
         category_match                              = self._score_category(user, job)
         exp_gap, exp_score                          = self._score_experience(user, job)
@@ -170,7 +134,7 @@ class MatcherService:
 
         features = {
             "skill_overlap":        skill_overlap,
-            "matched_skills":       matched_skills,           # list[str] nama skill yang cocok
+            "matched_skills":       matched_skills,          
             "skill_coverage":       skill_coverage,
             "soft_skill_coverage":  soft_coverage,
             "n_user_skills":        len([s for s in user.get("hard_skills", []) if s]),
@@ -190,7 +154,6 @@ class MatcherService:
         return heuristic_score, features
 
     def _score_skills(self, user: dict, job: dict) -> tuple[float, float, int, list[str]]:
-        """Hitung hard skill coverage dan soft skill coverage."""
         user_skills = {s.lower().strip() for s in user.get("hard_skills", []) if s}
         user_soft   = {s.lower().strip() for s in user.get("soft_skills",  []) if s}
         job_skills  = {str(s).lower().strip() for s in job.get("hard_skills", []) if s}
@@ -204,21 +167,16 @@ class MatcherService:
         return skill_coverage, soft_coverage, skill_overlap, matched_skills
 
     def _score_category(self, user: dict, job: dict) -> int:
-        """
-        Fuzzy category matching (case-insensitive, partial).
-        Contoh: 'Finance' cocok dengan 'Finance & Accounting'.
-        """
         u_cat = str(user.get("preferred_category", "")).lower().strip()
         j_cat = str(job.get("job_category",        "")).lower().strip()
 
         if not u_cat:
-            return 1  # Netral jika user tidak memiliki preferensi kategori
+            return 1  
         if u_cat == j_cat or u_cat in j_cat or j_cat in u_cat:
             return 1
         return 0
 
     def _score_experience(self, user: dict, job: dict) -> tuple[float, float]:
-        """Hitung exp gap dan exp score menggunakan fungsi eksponensial peluruhan."""
         required_exp = job.get("min_experience_years") or 0
         exp_gap      = user.get("total_experience_years", 0) - required_exp
         exp_score    = float(np.exp(-abs(exp_gap) / 3.0))
@@ -233,10 +191,7 @@ class MatcherService:
         return edu_gap, edu_score
 
     def _score_salary(self, user: dict, job: dict) -> tuple[float, float, bool]:
-        """
-        Hitung salary ratio dan salary score.
-        Outlier gaji (> MAX_REASONABLE_SALARY) direset ke 0 sebelum kalkulasi.
-        """
+
         s_min = min(job.get("salary_min") or 0, _MAX_REASONABLE_SALARY)
         s_max = min(job.get("salary_max") or 0, _MAX_REASONABLE_SALARY)
 
@@ -259,10 +214,7 @@ class MatcherService:
     # ──────────────────────────────────────────────────────────────────────────
 
     def _score_with_ml(self, features: dict) -> float | None:
-        """
-        Hitung skor menggunakan model ML jika tersedia.
-        Fallback ke None jika model tidak ada atau prediksi gagal.
-        """
+
         if self._ml_model is None:
             return None
 
@@ -467,9 +419,6 @@ class MatcherService:
 # Singleton & Backward-Compatible Module-Level Functions
 # ==============================================================================
 
-#: Instance tunggal yang digunakan seluruh aplikasi.
-#: Import ini, bukan class-nya langsung:
-#:     from services.matcher_service import matcher
 matcher = MatcherService()
 
 

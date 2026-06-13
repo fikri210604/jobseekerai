@@ -61,6 +61,8 @@ Perkembangan pesat di bidang *Natural Language Processing* (NLP) dan *Generative
 | **NumPy** | latest | Cosine similarity & embedding storage (`.npy`) |
 | **Scikit-learn** | 1.6.0 | ML models: Logistic Regression, Random Forest |
 | **XGBoost** | latest | ML model tambahan untuk hybrid scoring |
+| **MLflow** | 3.13.0 | Experiment tracking, metric logging, artifact logging, dan model registry |
+| **DagsHub SDK** | 0.7.0 | Menghubungkan MLflow ke remote repository DagsHub |
 | **Ollama / Gemma 2B** | latest | LLM lokal untuk ETL extraction (offline) |
 | **Google Gemini 2.5 Flash** | via API | Generative AI Career Advisor (online) |
 | **SerpApi** | latest | Scraping data lowongan dari Google Jobs |
@@ -84,6 +86,7 @@ Perkembangan pesat di bidang *Natural Language Processing* (NLP) dan *Generative
 |---|---|
 | **Google Cloud Run** | Deployment backend & frontend (asia-southeast2) |
 | **Docker** | Kontainerisasi aplikasi |
+| **DagsHub** | Remote experiment dashboard, artifact storage, dan model registry |
 
 ---
 
@@ -120,6 +123,7 @@ Perkembangan pesat di bidang *Natural Language Processing* (NLP) dan *Generative
                       │  - SBERT paraphrase-multilingual     │
                       │  - NumPy Embeddings (.npy cache)     │
                       │  - SerpApi (Job Data Source)         │
+                      │  - DagsHub + MLflow (ML Tracking)    │
                       │  - Google Cloud Run (deployment)     │
                       └─────────────────────────────────────┘
 ```
@@ -156,10 +160,10 @@ Pipeline ini menerima profil pengguna dan menghasilkan daftar lowongan paling re
 ┌──────────────────────────────▼──────────────────────────────────────┐
 │  LAYER 2: ML PREDICTION                             weight: 0.40    │
 │  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  models/*.pkl — dilatih dari ~1.491 labeled jobs (5-Fold CV)   │ │
-│  │  - Logistic Regression  ← default aktif                       │ │
-│  │  - Random Forest        ← alternatif presentasi               │ │
-│  │  - XGBoost              ← eksperimen (overfit di 1.491 rows)  │ │
+│  │  models/*.pkl — dilatih dari 60.940 pair user-job (5-Fold CV) │ │
+│  │  - Logistic Regression  ← baseline linear                     │ │
+│  │  - Random Forest        ← alternatif ensemble                 │ │
+│  │  - XGBoost              ← default aktif                       │ │
 │  └───────────────────────────┬────────────────────────────────────┘ │
 └──────────────────────────────┼──────────────────────────────────────┘
                                │
@@ -203,15 +207,15 @@ Skor heuristik akhir merupakan rata-rata tertimbang dari kelima komponen di atas
 
 **Layer 2 — ML Prediction (Bobot: 0.40)**
 
-Layer ini menggunakan model *machine learning* yang telah dilatih sebelumnya untuk memprediksi probabilitas kecocokan user-job. Model dilatih di `modelling.ipynb` menggunakan **pairwise dataset** (~53.726 pasangan user-job) dengan fitur-fitur tabular seperti `skill_coverage`, `category_match`, `exp_gap_normalized`, `salary_ratio`, dan lainnya (lihat bagian Modeling untuk detail).
+Layer ini menggunakan model *machine learning* yang telah dilatih sebelumnya untuk memprediksi probabilitas kecocokan user-job. Model dilatih di `modelling.ipynb` menggunakan **pairwise dataset** sebanyak **60.940 pasangan user-job** dengan fitur-fitur tabular seperti `skill_coverage`, `category_match`, `exp_gap_normalized`, `salary_ratio`, dan lainnya (lihat bagian Modeling untuk detail).
 
 Tiga model disediakan dan dipilih secara konfigurasi:
 
 | Model | Akurasi Test | Karakteristik |
 |---|---|---|
-| **Logistic Regression** (default) | ~67% | Interpretable, cepat, baseline stabil |
-| **Random Forest** | ~70% | Lebih akurat, menangkap interaksi non-linear |
-| **XGBoost** | ~71% | Paling akurat namun rawan overfit pada dataset kecil |
+| **Logistic Regression** | 66,37% | Interpretable, cepat, dan digunakan sebagai baseline |
+| **Random Forest** | 69,68% | Menangkap interaksi non-linear melalui ensemble pohon |
+| **XGBoost** (default) | 69,90% | Akurasi test tertinggi dan dimuat oleh `matcher_service.py` |
 
 Model mengembalikan probabilitas kelas positif (*match*) sebagai *ML Score*.
 
@@ -270,7 +274,7 @@ Pipeline ini memungkinkan pencarian lowongan berbasis makna (bukan kata kunci), 
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Output: SearchResponse                                             │
 │  - List lowongan terurut by semantic similarity                     │
-│  - Setiap hasil: judul, perusahaan, lokasi, skills, similarity score│
+│  - Setiap hasil: judul, perusahaan, lokasi, link, similarity score │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -298,100 +302,329 @@ Hasilnya difilter berdasarkan threshold minimum (default: 0.3) untuk menghilangk
 
 **Output — SearchResponse**
 
-Daftar lowongan dikembalikan dalam bentuk JSON yang mencakup: judul, perusahaan, lokasi, skills, dan skor similarity. Hasil diurutkan dari yang paling relevan secara semantik.
+Daftar lowongan dikembalikan dalam bentuk JSON yang mencakup judul, perusahaan, lokasi, deskripsi, link sumber, metadata posting, dan skor similarity. Hasil diurutkan dari yang paling relevan secara semantik.
 
 > **Catatan Teknis:** Implementasi awal menggunakan FAISS, namun diganti dengan NumPy cosine similarity karena FAISS memiliki *dependency binary issue* pada Google Cloud Run. Performa untuk dataset ~1.491 jobs tetap optimal dengan pendekatan NumPy.
 
 ---
 
-## Modeling — ML Training Pipeline
+## Retrieval — Pencarian Lowongan
 
-Proses training model ML dilakukan di `backend/models/modelling.ipynb`. Berikut langkah-langkahnya:
-
-### 1. Synthetic User Generation
-
-Dibuat **200 profil user sintetis** yang merepresentasikan pasar kerja Indonesia:
-- **10 curated personas** — andi (junior backend), budi (senior frontend), cici (fresh grad data analyst), dll.
-- **190 generated** — acak dari 7 kategori industri dengan distribusi pendidikan & gaji realistik.
-
-```python
-EDU_RANK = {"SMA": 1, "SMK": 1, "D3": 2, "S1": 3, "S2": 4, "S3": 5, "Unknown": 1}
-```
-
-### 2. Pairwise Dataset Creation
-
-Setiap user dipasangkan dengan setiap job dari `refined_jobs.json` (~1.491 jobs) → **~53.726 pasangan**.
-
-Setiap pasangan dihitung fitur tabular:
-
-| Fitur | Skala | Sumber |
-|---|---|---|
-| `skill_coverage` | 0–1 | overlap hard_skills user ∩ job |
-| `soft_skill_coverage` | 0–1 | overlap soft_skills user ∩ job |
-| `category_match` | 0/1 | binary cocok kategori |
-| `exp_gap_raw` | unbounded | selisih pengalaman |
-| `exp_gap_normalized` | -1 – 1 | exp_gap / 5.0, diclamp |
-| `salary_ratio` | 0–~2 | preferred / avg_job_salary |
-| `salary_feasible` | 0/1 | preferred ≤ salary_max |
-| `edu_gap` | -5 – 5 | rank job_edu − rank user_edu |
-| `edu_sufficient` | 0/1 | edu_gap ≤ 0 |
-| `is_remote` | 0/1 | job work_arrangement |
-| `is_junior` | 0/1 | job seniority_level |
-| `certifications_count` | 0–1 | dinormalisasi (/5) |
-| `n_user_skills` | 0–8+ | jumlah hard_skills user |
-
-Target `is_match` di-generate secara **probabilistic** menggunakan Bernoulli sampling dengan 4 level probabilitas, plus hard-negative filtering.
-
-### 3. Class Balancing
-
-Down-sampling kelas negatif dengan prioritas menyimpan **hard negatives** (category_match=1 & skill_coverage≥0.2 tapi tidak cocok). Rasio akhir: ~1.2× positif vs negatif.
-
-### 4. Train / Val / Test Split
-
-| Split | Proporsi | Jumlah (~) |
-|---|---|---|
-| **Train** | 70% | 37.600 |
-| **Validation** | 15% | 8.050 |
-| **Test** | 15% | 8.050 |
-
-Split menggunakan **stratify** berdasarkan `is_match` untuk menjaga distribusi label.
-
-### 5. Feature Scaling
-
-Hanya **Logistic Regression** yang menggunakan `StandardScaler` — tree-based models (RF, XGBoost) tidak memerlukan scaling karena berbasis decision tree.
-
-### 6. Model Training & Hyperparameter Tuning
-
-3 model dilatih dengan **5-Fold GridSearchCV**:
-
-| Model | Parameter Tuned | Best CV Accuracy |
-|---|---|---|
-| **Logistic Regression** | `C: [0.01, 0.1, 1.0, 10.0]` | ~66.2% |
-| **Random Forest** | `max_depth, min_samples_split, min_samples_leaf` | ~69.5% |
-| **XGBoost** | `max_depth, learning_rate, subsample, colsample_bytree` | ~69.7% |
-
-Semua model menggunakan `class_weight='balanced'` (LR & RF) untuk menangani imbalance.
-
-### 7. Model Serialization
-
-Model terbaik disimpan di `backend/models/` sebagai `.pkl` via `joblib`:
+Sistem retrieval digunakan untuk mencari lowongan berdasarkan **makna dari kalimat pengguna**, bukan hanya berdasarkan kata yang sama persis. Pengembangannya dilakukan di `backend/services/retrieval_pipeline.ipynb` dengan membandingkan TF-IDF dan SBERT, sedangkan pencarian pada aplikasi dijalankan oleh `backend/services/vector_store.py`.
 
 ```text
-backend/models/
-├── logistic_regression.pkl   ← Default aktif (baseline sederhana)
-├── random_forest.pkl         ← Alternatif presentasi
-└── xgboost.pkl               ← Eksperimen (cenderung overfit)
+Data mentah Google Jobs (4.911)
+        |
+        v
+Hapus lowongan duplikat (1.868)
+        |
+        v
+Buang data kosong dan spam (1.782)
+        |
+        +----------------+
+        v                v
+TF-IDF              SBERT
+Pencarian kata      Pencarian makna
+        |                |
+        +--------+-------+
+                 v
+Bandingkan hasil kedua metode
+                 |
+                 v
+SBERT memberikan hasil terbaik
+                 |
+                 v
+API: Query -> SBERT -> Hitung kemiripan -> Hasil terbaik
 ```
 
-### 8. Integrasi ke API
+### Tahapan Pengembangan
 
-Model dimuat oleh `matcher_service.py` saat startup (`load_resources()` → `_load_model()`) dan digunakan dalam hybrid scoring:
+#### 1. Menyiapkan Library
 
+Notebook memuat library untuk pengolahan data, pembersihan teks, pembuatan model pencarian, dan visualisasi. NLTK dan PySastrawi digunakan untuk mengolah teks Bahasa Indonesia.
+
+#### 2. Memuat dan Menghapus Data Duplikat
+
+Sebanyak **4.911 lowongan** dibaca dari `backend/data/raw/google_jobs_results.json`. Lowongan dengan judul dan nama perusahaan yang sama dianggap duplikat, sehingga tersisa **1.868 lowongan unik**.
+
+#### 3. Menyaring Data yang Tidak Layak
+
+Data kosong, terlalu pendek, atau terindikasi spam dibuang sebelum masuk ke proses pencarian. Penyaringan ini menggunakan aturan sederhana dan tidak memakai LLM.
+
+- Judul kosong atau memiliki kurang dari 8 karakter.
+- Deskripsi kosong atau memiliki kurang dari 80 karakter.
+- Judul atau deskripsi mengandung kata-kata spam dan konten yang bukan lowongan.
+- Deskripsi hanya berisi nomor telepon tanpa informasi pekerjaan yang jelas.
+
+Tahap ini membuang **86 data (4,6%)** dan menyisakan **1.782 lowongan**.
+
+#### 4. Menyiapkan Teks Lowongan
+
+Teks pencarian dibuat dengan menggabungkan `title`, `company_name`, `location`, dan `description`.
+
+Untuk TF-IDF, teks diubah menjadi huruf kecil, dibersihkan dari HTML, URL, angka, dan tanda baca, kemudian kata-kata umum dibuang dan kata diubah ke bentuk dasarnya. SBERT menggunakan teks asli yang sudah digabungkan agar makna kalimat tetap terjaga.
+
+#### 5. Membangun Pencarian TF-IDF
+
+TF-IDF digunakan sebagai metode pembanding. Metode ini mencari lowongan berdasarkan kesamaan kata dan frasa antara query pengguna dan teks lowongan.
+
+Konfigurasinya menggunakan maksimal 10.000 kata atau frasa dan menghasilkan matriks berukuran **1.782 x 10.000**.
+
+#### 6. Membangun Pencarian SBERT
+
+Model `paraphrase-multilingual-MiniLM-L12-v2` mengubah setiap teks lowongan menjadi kumpulan **384 angka** yang mewakili maknanya. Sebanyak 1.782 lowongan diproses dalam kelompok berisi 64 data agar penggunaan memori lebih efisien.
+
+Keunggulan SBERT adalah kemampuannya memahami kata atau kalimat yang berbeda tetapi memiliki arti serupa. Contohnya, query “pengembang aplikasi web” masih dapat menemukan lowongan “full-stack developer”.
+
+#### 7. Membuat Fungsi Pencarian
+
+Notebook menyediakan `search_tfidf()` dan `search_sbert()`. Kedua fungsi mengubah query ke bentuk angka, membandingkannya dengan seluruh lowongan, lalu mengurutkan hasil berdasarkan tingkat kemiripan.
+
+TF-IDF menggunakan batas skor awal `0.01`, sedangkan SBERT menggunakan `0.3`. Hasil dengan skor tertinggi ditampilkan lebih dahulu.
+
+#### 8. Menguji dan Membandingkan Model
+
+Pengujian dilakukan menggunakan **12 contoh pencarian** dari berbagai bidang, seperti data, software, akuntansi, produksi, marketing, HR, administrasi, F&B, logistik, dan desain. Lima hasil teratas dari setiap query kemudian dibandingkan dengan daftar lowongan yang dianggap relevan.
+
+| Model | MAP | NDCG@5 | Precision@5 |
+|---|---:|---:|---:|
+| **TF-IDF** | 0,3754 | 0,3259 | 0,3333 |
+| **SBERT** | **0,4654** | **0,4792** | **0,4500** |
+
+SBERT memperoleh nilai lebih tinggi pada seluruh metrik sehingga dipilih sebagai metode pencarian utama pada aplikasi.
+
+> **Catatan:** Hasil ini masih merupakan evaluasi awal. Penilaian relevansi masih berdasarkan kemiripan judul, sehingga pengujian berikutnya sebaiknya menggunakan `job_id` unik agar hasil evaluasi lebih akurat.
+
+#### 9. Menampilkan Hasil Evaluasi
+
+Notebook menampilkan grafik perbandingan nilai kedua metode dan contoh tiga hasil terbaik dari beberapa query. Tahap ini membantu melihat perbedaan hasil TF-IDF dan SBERT secara langsung.
+
+#### 10. Menyimpan Model
+
+Model SBERT disimpan di `backend/data/retrieval/sbert_model_lokal/` agar backend dapat menggunakannya tanpa mengunduh ulang model.
+
+File `retrieval_index.faiss` dan `retrieval_metadata.pkl` merupakan hasil implementasi lama dan tidak lagi digunakan oleh API terbaru.
+
+### Alur Pencarian pada Aplikasi
+
+Notebook menggunakan 1.782 data mentah yang sudah disaring untuk membandingkan TF-IDF dan SBERT. API menggunakan **1.491 data hasil ETL** karena data tersebut lebih bersih dan memiliki struktur yang konsisten.
+
+```text
+GET /api/v1/search?q=...&limit=10&threshold=0.3&province=...
+        |
+        v
+Periksa query dan API key
+        |
+        v
+Muat 1.491 lowongan dan representasi maknanya
+        |
+        v
+Ubah query menjadi 384 angka dengan SBERT
+        |
+        v
+Bandingkan query dengan seluruh lowongan
+        |
+        v
+Buang hasil dengan skor rendah dan filter provinsi
+        |
+        v
+Urutkan hasil dan kirim sebagai JSON
 ```
+
+#### 1. Memuat Data saat Server Dijalankan
+
+Saat FastAPI dijalankan, `vector_store.load_index()` memuat **1.491 lowongan** dari `refined_jobs.json` dan representasi maknanya dari `sbert_embeddings.npy`.
+
+File tersebut memiliki ukuran **1.491 x 384**, yaitu satu baris untuk setiap lowongan dan 384 angka untuk mewakili maknanya. Jika jumlah data dan representasi tidak sesuai, sistem akan membuat ulang file tersebut secara otomatis.
+
+#### 2. Memuat Model SBERT
+
+Model baru dimuat ketika pertama kali dibutuhkan agar proses startup server tidak terlalu lama. Backend akan memakai model dari `sbert_model_lokal/`; jika tidak tersedia, model akan diunduh melalui Sentence Transformers.
+
+#### 3. Mengubah Query Menjadi Angka
+
+Kalimat pencarian pengguna, baik dalam Bahasa Indonesia, Inggris, maupun campuran, diubah oleh SBERT menjadi 384 angka. Query tidak melalui proses stemming agar makna kalimat tetap terjaga.
+
+#### 4. Menghitung Kemiripan
+
+Sistem membandingkan angka dari query dengan angka dari setiap lowongan menggunakan cosine similarity. Semakin tinggi nilainya, semakin mirip makna query dan lowongan tersebut.
+
+```text
+similarity = dot(query_vector, job_vector)
+             / (norm(query_vector) x norm(job_vector))
+```
+
+#### 5. Menyaring Hasil
+
+Lowongan dengan skor di bawah `threshold` tidak ditampilkan. Pengguna juga dapat membatasi pencarian berdasarkan provinsi, misalnya DKI Jakarta, Jawa Barat, atau Yogyakarta.
+
+#### 6. Mengirim Hasil ke Pengguna
+
+Sistem mengambil hasil terbaik sesuai nilai `limit`, dengan pilihan 1 sampai 50 lowongan. Hasil tersebut berisi judul, perusahaan, lokasi, deskripsi, link sumber, gaji, waktu posting, tipe pekerjaan, dan skor kemiripan.
+
+API kemudian mengembalikannya dalam format `SearchResponse`, dimulai dari lowongan yang paling relevan.
+
+> **Catatan implementasi:** Versi awal menggunakan FAISS, sedangkan versi terbaru menggunakan cosine similarity dari Scikit-learn. Pendekatan ini lebih mudah dijalankan di Cloud Run dan masih cukup cepat untuk 1.491 lowongan.
+
+---
+
+## Modeling — ML Training Pipeline
+
+Proses training dilakukan di `backend/models/modelling.ipynb`; angka berikut mengacu pada **output eksekusi terakhir notebook**, bukan estimasi.
+
+### 1. Setup Environment & Load Dataset
+
+Notebook memuat library analisis/ML, konfigurasi `.env`, dan layanan tracking DagsHub, kemudian membaca **1.491 lowongan dengan 16 kolom** dari `backend/data/vector/job_mapping.json`.
+
+### 2. Data Understanding & EDA
+
+Tahap ini memeriksa schema melalui `df.info()`, memastikan tidak ada duplikasi berdasarkan `job_id`, `title`, dan `company`, menghitung statistik deskriptif, serta memvisualisasikan pengalaman-gaji, kategori pekerjaan, senioritas-gaji, dan work arrangement.
+
+### 3. Data Preprocessing
+
+Sebanyak **733 missing value** pada `education_level` diisi `Unknown`, **7 missing value** pada `job_subcategory` diisi `General`, dan lowongan dengan `salary_max > Rp100 juta` dibuang sehingga tersisa **1.484 lowongan**.
+
+### 4. Synthetic User Generation
+
+Notebook membuat **10 persona terkurasi** dan **190 profil hasil augmentasi acak** dari 7 kategori industri, sehingga tersedia **200 profil user sintetis** dengan atribut skill, pengalaman, pendidikan, preferensi gaji, kategori, dan sertifikasi.
+
+### 5. Pairwise Dataset & Probabilistic Labeling
+
+Setiap profil dipasangkan dengan lowongan, dihitung compatibility score berbobot, lalu target `is_match` dibuat menggunakan Bernoulli sampling dengan probabilitas 5%, 20%, 50%, atau 80% sesuai rentang skor dan dikoreksi menggunakan hard-negative rules.
+
+### 6. Class Balancing & Feature Finalization
+
+Kelas negatif di-downsample menjadi sekitar 1,2 kali kelas positif dengan mempertahankan hard negatives, menghasilkan **60.940 pasangan** yang terdiri dari **33.240 negatif (54,55%)** dan **27.700 positif (45,45%)**.
+
+Dataset pairing awal memiliki 14 fitur, tetapi training final memakai 13 fitur berikut:
+
+```text
+skill_coverage, n_user_skills, category_match, exp_gap_raw,
+exp_gap_normalized, user_exp_years, edu_gap, edu_sufficient,
+salary_feasible, salary_ratio, is_remote, is_junior,
+certifications_count
+```
+
+`soft_skill_coverage` sudah dihitung pada pairwise dataset tetapi belum dimasukkan ke `feature_cols` saat training, sedangkan `semantic_score` dilewati karena belum tersedia.
+
+### 7. Stratified Data Split
+
+Data dibagi secara stratified berdasarkan `is_match` agar distribusi label tetap konsisten:
+
+| Split | Proporsi | Jumlah |
+|---|---:|---:|
+| **Train** | 70% | 42.656 |
+| **Validation** | 15% | 9.143 |
+| **Test** | 15% | 9.141 |
+
+### 8. Model Training & Hyperparameter Tuning
+
+Logistic Regression, Random Forest, dan XGBoost dilatih dengan **5-Fold GridSearchCV** menggunakan accuracy sebagai scoring; `StandardScaler` hanya digunakan dalam pipeline Logistic Regression.
+
+| Model | Best Parameters | Best CV Accuracy |
+|---|---|---:|
+| **Logistic Regression** | `C=10.0` | 66,02% |
+| **Random Forest** | `max_depth=10`, `min_samples_leaf=10`, `min_samples_split=15` | 69,73% |
+| **XGBoost** | `max_depth=5`, `learning_rate=0.05`, `subsample=1.0`, `colsample_bytree=0.8` | 69,88% |
+
+### 9. Test Set Evaluation
+
+Ketiga model dievaluasi pada **9.141 data test** menggunakan accuracy, precision, recall, F1-score, classification report, dan confusion matrix.
+
+| Model | Accuracy | Precision Positif | Recall Positif | F1 Positif |
+|---|---:|---:|---:|---:|
+| **Logistic Regression** | 66,37% | 0,63 | 0,64 | 0,63 |
+| **Random Forest** | 69,68% | 0,69 | 0,60 | 0,64 |
+| **XGBoost** | **69,90%** | **0,70** | 0,59 | 0,64 |
+
+### 10. Experiment Tracking & Model Registry
+
+Notebook menginisialisasi `DagsHubService`, sementara `dagshub.init(..., mlflow=True)` mengarahkan MLflow Tracking URI ke repository DagsHub dan memilih experiment **`JobSeekerAI - Job Matching`**.
+
+Setiap model dicatat sebagai MLflow run terpisah dengan isi berikut:
+
+| Komponen | Data yang Dicatat |
+|---|---|
+| **Run name** | `LogisticRegression_Training_Run`, `RandomForest_Training_Run`, `XGBoost_Training_Run` |
+| **Parameters** | Seluruh parameter estimator terbaik hasil GridSearchCV |
+| **Metrics** | Accuracy, F1, ROC-AUC, serta precision dan recall khusus XGBoost |
+| **Tags** | Framework, task `binary_classification`, dan domain `job_matching` |
+| **Model artifact** | Estimator hasil training melalui `mlflow.sklearn.log_model()` |
+| **Model registry** | `jobseekerai-logistic_regression`, `jobseekerai-random_forest`, dan `jobseekerai-xgboost` |
+
+Jika tracking tidak terkonfigurasi atau koneksi gagal, `DagsHubService` mengembalikan `None` dan proses modelling lokal tetap dapat dilanjutkan.
+
+### 11. Model Interpretation & Advanced Evaluation
+
+Notebook menghitung permutation importance XGBoost berbasis penurunan F1, membandingkan confusion matrix, menguji learning rate `0.1`, `0.01`, `0.001`, dan `0.0001` selama 60 boosting rounds, serta memvisualisasikan ROC-AUC dan Precision-Recall curve.
+
+### 12. Model Export & API Integration
+
+Model hasil notebook disimpan sebagai `logistic_regression.pkl`, `random_forest.pkl`, dan `xgboost.pkl`, kemudian API menggunakan file lokal `backend/models/xgboost.pkl` sebagai artifact inference default. DagsHub/MLflow dipakai untuk tracking dan registry, tetapi API saat ini **tidak mengunduh model dari DagsHub saat runtime**.
+
+#### Alur Integrasi Model ke API
+
+```text
+Frontend Form
+    → Next.js API Proxy + X-API-Key
+    → POST /api/v1/match?limit=10
+    → Pydantic MatchRequest validation
+    → MatcherService singleton
+    → Feature engineering per user-job
+    → XGBoost predict_proba()
+    → 40% ML score + 60% heuristic score
+    → Sort descending + top-K
+    → Pydantic MatchResponse
+```
+
+1. **Model export:** Notebook menyimpan estimator XGBoost ke `backend/models/xgboost.pkl`.
+2. **Startup loading:** FastAPI `lifespan` menjalankan background thread yang memanggil `matcher.load_resources()` untuk memuat `refined_jobs.json` dan model melalui `joblib.load()`.
+3. **Dependency injection:** `get_matcher()` memberikan singleton `MatcherService` yang sudah memegang dataset dan model kepada endpoint.
+4. **Request validation:** `POST /api/v1/match` menerima `MatchRequest`, sedangkan profil kandidat divalidasi oleh `MatchProfileInput`.
+5. **Category filtering:** Service membatasi job pool berdasarkan `category_filter` atau `preferred_category`, dengan fallback ke seluruh dataset jika kategori tidak ditemukan.
+6. **Online feature engineering:** Untuk setiap pasangan kandidat-lowongan, service menghitung 13 fitur yang sama dengan fitur training:
+
+```text
+skill_coverage, n_user_skills, category_match, exp_gap_raw,
+exp_gap_normalized, user_exp_years, edu_gap, edu_sufficient,
+salary_feasible, salary_ratio, is_remote, is_junior,
+certifications_count
+```
+
+7. **ML inference:** Service membaca `feature_names_in_` dari model untuk menjaga nama dan urutan kolom, lalu mengambil probabilitas kelas match melalui `predict_proba(df)[0, 1]`.
+8. **Score fusion:** Probabilitas ML digabungkan dengan heuristic score:
+
+```text
 Final Score = 0.40 × ML_Score + 0.60 × Heuristic_Score
 ```
 
-Jika model gagal load, sistem fallback ke pure heuristic scoring tanpa error.
+9. **Ranking & response:** Semua lowongan diurutkan berdasarkan final score, dipotong sesuai `limit` (1–50), lalu dikembalikan sebagai `MatchResponse` beserta `confidence_score`, `score_method`, dan rincian kecocokan.
+10. **Monitoring & fallback:** Endpoint `/health` menampilkan status resource dan model; jika file model tidak tersedia, gagal dimuat, atau inference gagal, sistem otomatis menggunakan pure heuristic scoring.
+
+#### API Contract Ringkas
+
+```http
+POST /api/v1/match?limit=10
+X-API-Key: <server-api-key>
+Content-Type: application/json
+```
+
+```json
+{
+  "parsed_cv": {
+    "hard_skills": ["Python", "SQL", "Git"],
+    "soft_skills": ["komunikasi"],
+    "education_level": "S1",
+    "total_experience_years": 2,
+    "preferred_category": "Technology",
+    "preferred_salary": 7000000,
+    "certifications_count": 1
+  },
+  "category_filter": "Technology"
+}
+```
+
+> **Catatan validasi artifact:** `xgboost.pkl` yang aktif saat ini memiliki 13 fitur yang sesuai dengan API, tetapi parameternya adalah `n_estimators=60` dan `learning_rate=0.0001`, yaitu model terakhir dari eksperimen learning-rate. Artifact ini perlu diekspor ulang dari `xgb_grid.best_estimator_` agar model deployment identik dengan hasil evaluasi XGBoost terbaik (`learning_rate=0.05`).
 
 ---
 
@@ -412,11 +645,11 @@ Data lowongan kerja dikumpulkan menggunakan **SerpApi** — sebuah layanan scrap
 | **Raw** (SerpApi) | `data/raw/google_jobs_results.json` | **4.911** | 12 (mentah) | ~18 MB |
 | **Cleaned** (setelah AI Extraction) | `data/cleaned/cleaned_jobs.json` | **1.617** | 28 (terstruktur) | — |
 | **Refined** (setelah Refinement) | `data/cleaned/refined_jobs.json` | **1.491** | 29 | — |
-| **Vector/Modeling** | `data/vector/job_mapping.json` | **1.322** | 16 | — |
+| **Vector/Modeling** | `data/vector/job_mapping.json` | **1.491** | 16 | — |
 | **Embedded** | `data/retrieval/sbert_embeddings.npy` | 1.491 embedding vectors | — | — |
 
-> **Mengapa hanya 1.322 dari 4.911?**  
-> Proses Feature Extraction melalui tiga tahap: (1) **AI Extraction** menggunakan Ollama/Gemma 2B — dari 4.911 raw jobs, hanya ~1.617 yang lolos validasi sebagai lowongan valid (`is_valid_job = true`) dan berhasil diekstrak atributnya; (2) **Refinement** berbasis Python — menyisakan ~1.491 setelah normalisasi gaji, deduplikasi skill, dan perbaikan tipe pekerjaan; (3) **Final Filter** untuk modeling — menghasilkan 1.322 data dengan seluruh fitur terisi lengkap. Sisanya difilter karena merupakan duplikat, data tidak lengkap, atau bukan lowongan valid.
+> **Mengapa hanya 1.491 dari 4.911?**
+> Proses Feature Extraction melalui dua tahap: (1) **AI Extraction** menggunakan Ollama/Gemma 2B — dari 4.911 raw jobs, sekitar 1.617 lolos validasi sebagai lowongan valid (`is_valid_job = true`) dan berhasil diekstrak atributnya; (2) **Refinement** berbasis Python — menghasilkan 1.491 data setelah normalisasi gaji, deduplikasi skill, perbaikan tipe data, dan filtering data tidak lengkap atau tidak valid.
 
 ### Proses Feature Extraction (Data Pipeline)
 
@@ -474,7 +707,7 @@ Pipeline ekstraksi fitur dijalankan offline via `backend/services/etl_learning.i
                          └──────────────────────────────────────────┘                  ▼
                                                                      ┌──────────────────────────┐
                                                                      │  job_mapping.json        │
-                                                                     │  (1.322 data)            │
+                                                                     │  (1.491 data)            │
                                                                      │  16 atribut final        │
                                                                      │  (untuk modeling/index)  │
                                                                      └──────────────────────────┘
@@ -494,7 +727,7 @@ Tahap ini menggunakan logika Python murni untuk membersihkan dan menormalisasi h
 
 #### Output Akhir untuk Modeling
 
-Data akhir `job_mapping.json` (1.322 data, 16 atribut) digunakan untuk:
+Data akhir `job_mapping.json` (1.491 data, 16 atribut) digunakan untuk:
 - **ML Modeling** (`modelling.ipynb`) — pairwise feature engineering & training
 - **Semantic Indexing** (`data_indexing.ipynb`) — SBERT embedding & FAISS/NumPy index
 ### Schema Data Output (`refined_jobs.json`)
@@ -572,14 +805,16 @@ project-akhir/
 │   │   ├── gemini_service.py  ← Google Gemini 2.5 Flash Career Advisor
 │   │   ├── etl_pipeline.py    ← Ekstraksi & normalisasi data pekerjaan
 │   │   ├── data_indexing.py   ← Build & load index untuk pencarian
+│   │   ├── dagshub_service.py  ← MLflow tracking & DagsHub model registry
 │   │   ├── evaluation_cells.py← ML evaluation helpers
 │   │   ├── scraper_v2.py      ← SerpApi scraper
 │   │   ├── etl_learning.ipynb ← Notebook utama ETL pipeline (Ollama)
-│   │   ├── data_indexing.ipynb← Notebook ML training (RF vs LogReg vs XGB)
+│   │   ├── data_indexing.ipynb← Notebook semantic indexing
 │   │   └── retrieval_pipeline.ipynb ← Notebook Semantic Search (SBERT)
 │   │
 │   ├── models/                ← Model ML / Embedder
 │   │   ├── embedder.py        ← SBERT singleton wrapper
+│   │   ├── modelling.ipynb    ← Training, evaluation, dan MLflow tracking
 │   │   ├── logistic_regression.pkl ← Trained LogReg model
 │   │   ├── random_forest.pkl       ← Trained RF model
 │   │   └── xgboost.pkl             ← Trained XGBoost model
@@ -599,6 +834,7 @@ project-akhir/
 │   │
 │   ├── requirements.txt       ← Dependencies utama
 │   ├── requirements_ml.txt    ← Dependencies ML tambahan
+│   ├── push_models_to_dagshub.py ← Upload file .pkl sebagai MLflow artifacts
 │   ├── Dockerfile
 │   └── docker-compose.yml
 │
@@ -685,7 +921,7 @@ GET  /api/v1/retrieval/search         → Retrieval response (legacy)
 | `temperature` | `0.1` | Rendah = deterministik |
 | `cors_origins` | `http://localhost:3000,...` | Origin yang diizinkan CORS |
 
-### `backend/services/` (4 core services)
+### `backend/services/` (5 core services)
 
 **`matcher_service.py` → `MatcherService`:**
 ```python
@@ -718,6 +954,19 @@ vector_store.get_job_category_distribution() # → sebaran kategori
 - `process_with_ai()` — Ekstraksi menggunakan Ollama/Gemma 2B
 - `refine_job_data()` — Post-processing (salary normalisasi, skill dedup)
 
+**`dagshub_service.py` → `DagsHubService`:**
+```python
+dagshub_service.initialize()                   # Hubungkan MLflow ke DagsHub
+dagshub_service.log_model_run(                 # Log params, metrics, tags, dan model
+    model, params, metrics, model_name="xgboost"
+)
+dagshub_service.log_dataset_info(...)          # Log metadata dataset
+dagshub_service.get_best_run("roc_auc")         # Ambil run terbaik
+```
+- Experiment default: `JobSeekerAI - Job Matching`
+- Model yang didukung: XGBoost, Random Forest, dan Logistic Regression
+- Kegagalan tracking tidak menghentikan training karena service menggunakan graceful fallback
+
 ### `backend/utils/`
 
 **`skill_normalizer.py`:**
@@ -744,6 +993,12 @@ gemini_api_key=your-gemini-api-key
 # === SerpApi (job scraping) ===
 serpapi_key=your-serpapi-key
 
+# === DagsHub & MLflow Tracking ===
+DAGSHUB_REPO_OWNER=your-dagshub-username
+DAGSHUB_REPO_NAME=your-repository-name
+DAGSHUB_USERNAME=your-dagshub-username
+DAGSHUB_TOKEN=your-dagshub-token
+
 # === Ollama (local LLM — tidak perlu key) ===
 # Pastikan Ollama berjalan di localhost:11434
 ```
@@ -758,6 +1013,11 @@ cd backend/
 pip install -r requirements.txt        # Install dependencies
 python -m uvicorn main:app --reload    # http://localhost:8000
 python -m backend.utils.logger         # Smoke test logger
+
+# Modelling & experiment tracking
+pip install -r requirements_ml.txt
+jupyter notebook models/modelling.ipynb
+python push_models_to_dagshub.py        # Opsional: upload ulang artifact .pkl
 ```
 
 ### Frontend
@@ -795,6 +1055,8 @@ npm run dev                            # http://localhost:3000
 | `fastapi` | 0.115.5 | Web framework |
 | `joblib` | latest | Model serialization (.pkl) |
 | `google-generativeai` | latest | Gemini AI SDK |
+| `dagshub` | 0.7.0 | Inisialisasi remote MLflow tracking di DagsHub |
+| `mlflow` | 3.13.0 | Experiment runs, metrics, artifacts, dan model registry |
 
 ---
 
@@ -808,8 +1070,9 @@ npm run dev                            # http://localhost:3000
 | Data duplikat saat resume ETL | `job_id` set untuk skip yang sudah ada | Proses bisa diinterrupt & dilanjutkan |
 | `soft_skills` > 3 item | Filter `len(s.split()) <= 3` di refinement | Prompt `max3` kadang dilanggar model |
 | `job_subcategory` kadang list | `to_str()` di `build_job_text()` handle list & string | Output Gemma 2B tidak konsisten |
-| Data ML ~1.491 baris | **5-Fold Cross Validation** | Mitigasi data kecil tanpa scraping ulang |
-| 3 models tersimpan (RF, LogReg, XGB) | Default: `logistic_regression.pkl` | XGB too complex for 1.491 rows; RF for presentation; LogReg for baseline |
+| Data sumber ML 1.491 lowongan | **200 synthetic users + pairwise generation + 5-Fold Cross Validation** | Menghasilkan 60.940 pasangan terlabel untuk training dan evaluasi |
+| 3 models tersimpan (RF, LogReg, XGB) | Default: `xgboost.pkl` | XGBoost memperoleh accuracy test tertinggi, sedangkan LogReg tetap menjadi baseline |
+| Tracking eksperimen bersifat eksternal | MLflow diarahkan ke DagsHub melalui `dagshub.init(..., mlflow=True)` | Training lokal tetap berjalan ketika credential atau koneksi DagsHub tidak tersedia |
 | FAISS diganti NumPy | `vector_store.py` sekarang menggunakan `sbert_embeddings.npy` + cosine similarity NumPy | FAISS tidak bisa berjalan di Cloud Run (dependency/binary issue) |
 | CPU throttling di Cloud Run | Aktifkan `--no-cpu-throttling` pada service backend | Background thread load NumPy dibekukan sebelum selesai tanpa CPU always-on |
 | job_id base64 rusak di URL | Endpoint `GET /api/v1/jobs/by-link?link=...` dibuat agar ID aman dikirim sebagai query param | Karakter `=` dan `/` di base64 merusak URL path routing |

@@ -25,7 +25,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Pre-download SBERT model saat build (bukan saat cold start)
 # Ini mencegah cold start yang lama di Cloud Run
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
 
@@ -59,10 +58,4 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
 
-# Tidak menggunakan HEALTHCHECK bawaan Docker karena Cloud Run sudah punya health check sendiri.
-# HEALTHCHECK dihapus agar tidak menambah overhead saat startup.
-
-# Start server
-# --timeout-keep-alive 75 → lebih panjang dari Cloud Run request timeout (60s)
-# --no-access-log       → kurangi log noise di Cloud Run
 CMD uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --timeout-keep-alive 75

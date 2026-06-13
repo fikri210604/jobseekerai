@@ -26,12 +26,10 @@ class Embedder:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            # JANGAN load model di sini — lazy loading via _ensure_model_loaded()
             cls._instance._model = None
         return cls._instance
 
     def _ensure_model_loaded(self) -> None:
-        """Load SBERT model on first use (lazy loading) — tidak block saat import."""
         if self._model is not None:
             return
 
@@ -89,6 +87,4 @@ class Embedder:
         return ". ".join(filter(None, parts))
 
 
-# Singleton instance — import dan gunakan langsung
-# Model TIDAK di-load di sini; akan di-load lazy saat encode() pertama kali dipanggil
 embedder = Embedder()

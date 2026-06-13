@@ -29,16 +29,7 @@ GEMINI_ENDPOINT_TEMPLATE = (
 # ── Helper: call Gemini REST API ──────────────────────────────────────────────
 
 def _call_gemini(prompt: str) -> dict[str, Any]:
-    """
-    Memanggil Gemini REST API dan mengembalikan parsed JSON dari teks output.
-    Menggunakan urllib bawaan Python agar tidak butuh dependensi tambahan.
 
-    Returns:
-        dict hasil JSON yang di-parse dari respons Gemini.
-
-    Raises:
-        RuntimeError: jika API key tidak ada, request gagal, atau JSON tidak valid.
-    """
     if not settings.gemini_api_key:
         raise RuntimeError("GEMINI_API_KEY belum dikonfigurasi di environment.")
 
@@ -86,7 +77,6 @@ def _call_gemini(prompt: str) -> dict[str, Any]:
         logger.error("[GeminiService] Gemini mengembalikan teks kosong.")
         raise RuntimeError("Gemini mengembalikan respons kosong.")
 
-    # Safety net: strip markdown fences jika ada
     cleaned = raw_text.replace("```json", "").replace("```", "").strip()
 
     try:
@@ -108,7 +98,7 @@ def _build_advisor_prompt(user_profile: dict, top_results: list[dict]) -> str:
     jobs_context_lines = []
     for i, r in enumerate(top2, start=1):
         md = r.get("match_details", {})
-        skills_needed = r.get("hard_skills", [])[:4]  # Pangkas jadi 4 skill saja
+        skills_needed = r.get("hard_skills", [])[:4] 
         line = (
             f"{i}. {r.get('title', 'N/A')} di {r.get('company_name', 'N/A')} "
             f"({r.get('confidence_pct', 'N/A')})\n"
@@ -118,7 +108,6 @@ def _build_advisor_prompt(user_profile: dict, top_results: list[dict]) -> str:
 
     jobs_context = "\n".join(jobs_context_lines)
 
-    # Hitung skill gap ringan
     all_required: set[str] = set()
     all_matched: set[str] = set()
     for r in top2:
